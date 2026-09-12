@@ -1,67 +1,36 @@
-# BibDrop — Never miss a race.
+# BibDrop
 
-BibDrop is a planning agent for goal-oriented marathon runners. Instead of
-manually tracking registration windows across dozens of race websites, a
-runner points BibDrop at a race and the agent researches its current
-registration timeline — lottery windows, general entry, wave releases,
-price changes — and reports back with sources and a confidence level.
+A planning agent for marathon runners. Registration for popular races is scattered across dozens of sites, opens at different times, and often runs through lotteries or waitlists that are easy to miss. BibDrop points an agent at a race's official site and asks it to figure out where registration currently stands — lottery windows, general entry, price tiers — and report back with sources and a confidence level, rather than a human tracking it all by hand.
 
-This is a portfolio MVP of a fuller product concept (full PRD and design
-brief available on request). It's scoped down from the original vision in
-one deliberate way: **the seed data only contains race *identity*** (name,
-official site, course character) for a curated set of ~28 well-known
-marathons. **Registration dates are never hardcoded** — they're researched
-live, on demand, by the agent hitting the official race site and returning
-structured, sourced data. That's the actual product mechanic, not a demo
-shortcut: a hardcoded date list goes stale every year, which is the exact
-problem BibDrop exists to solve.
+Work in progress. Currently a local-only MVP: real agent, real database, no deployment yet.
 
-## What this demonstrates
+## How it works
 
-- An agent that does real, bounded, cited web research (not just a chatbot
-  wrapper) and returns structured data the app can render.
-- Human-legible transparency: every researched race shows its confidence
-  level and the source snippets the agent based its answer on.
-- Production-adjacent guardrails around a public-facing LLM feature — rate
-  limiting, a fixed input surface (no free-text URLs), a daily cost cap, and
-  treating fetched web content as data rather than instructions.
+- A curated list of ~28 well-known marathons is seeded into the database by name and official URL only — no registration dates are hardcoded.
+- Opening a race and clicking "Research this race" triggers a two-step agent call: first the model researches freely using web search, then a second call converts those findings into a structured record via a forced tool call (more reliable than just asking the model to "reply in JSON," which turned out to be inconsistent).
+- Every researched race shows a confidence level and the source snippets the agent based its answer on, so it's clear what's verified versus inferred.
 
 ## Architecture
 
 ```
 bibdrop/
-  server/   Express API, MongoDB via Mongoose, Claude API integration
+  server/   Express API, MongoDB via Mongoose, Anthropic API integration
   client/   React (Vite) frontend
 ```
 
-- **server/src/services/claudeResearch.js** — the actual agent. Calls the
-  Anthropic API with the `web_search` tool, given a race's official URL, and
-  asks for structured JSON back (registration events, a summary, a
-  confidence level, source snippets).
-- **server/src/routes/research.js** — the endpoint the "Research this race"
-  button calls. Rate-limited (see below) since it's the one route that
-  spends API credits.
-- **server/src/seed/races.seed.js** — populates the race registry (identity
-  only). Run once after setup.
+- `server/src/services/claudeResearch.js` — the agent itself. Free-form research with the `web_search` tool, then a forced tool call to extract structured data from the findings.
+- `server/src/routes/research.js` — the endpoint behind the "Research this race" button. Rate-limited, since it's the one route that spends API credits.
+- `server/src/seed/races.seed.js` — populates the race registry (identity only).
 
-## Guardrails (read this before deploying publicly)
+## Guardrails
 
-If you deploy this with a live Anthropic API key behind a public URL,
-anyone who finds it can trigger research calls. This repo includes:
+This isn't deployed publicly yet, but the code already has the basics in place for when it is:
 
-- Per-IP rate limiting and a global daily budget cap on the research
-  endpoint (`server/src/middleware/rateLimiter.js`), both DB-backed so they
-  survive restarts.
-- Research is only ever triggered against races already in the seeded
-  registry — there's no free-text URL field, which would otherwise let
-  anyone use this as an open web-fetch proxy.
-- The research prompt explicitly instructs the model to treat fetched page
-  content as data to extract from, never as instructions to follow — a
-  defense against prompt injection from untrusted race-site content.
+- Per-IP rate limiting and a daily budget cap on the research endpoint, DB-backed so they survive restarts.
+- Research only ever runs against races already in the seeded registry — no free-text URL field, so it can't be used as an open web-fetch proxy.
+- The research prompt treats fetched page content as data to extract from, never as instructions to follow, as a defense against prompt injection from untrusted race pages.
 
-These are cost/abuse ceilings, not a full security posture. If you get real
-traffic, consider adding an auth wall or a captcha in front of the research
-button, and monitor `ResearchLog` for unusual patterns.
+These are cost/abuse ceilings, not a full security posture — an auth wall or captcha would be the next layer if this ever saw real traffic.
 
 ## Local setup
 
@@ -70,7 +39,7 @@ button, and monitor `ResearchLog` for unusual patterns.
 cd server
 cp .env.example .env   # fill in MONGODB_URI and ANTHROPIC_API_KEY
 npm install
-npm run seed            # populates the race registry
+npm run seed
 npm run dev
 
 # Client (separate terminal)
@@ -79,25 +48,15 @@ npm install
 npm run dev
 ```
 
-Visit the client's local URL (Vite will print it, typically
-`http://localhost:5173`). Open any race and click "Research this race" to
-see the agent run.
+Open the client's local URL (Vite prints it, typically `http://localhost:5173`). Open any race and click "Research this race" to watch the agent run.
 
 ## Deployment
 
-See `DEPLOYMENT.md` for a suggested Vercel (frontend) + Render (API) +
-MongoDB Atlas setup, including where the guardrail env vars go.
+Not live yet. `DEPLOYMENT.md` has a plan for Vercel (frontend) + Render (API) + MongoDB Atlas once it's ready to go public.
 
-## What's deliberately out of scope for v1
+## Not built yet
 
-- Scheduled/background monitoring (the PRD's Phase 2+) — this MVP is
-  on-demand research only, triggered by the button.
+- Scheduled/background monitoring — this is on-demand only, triggered by the button.
 - Goal-based recommendation ranking beyond a simple tag filter.
 - User accounts, saved calendars, email/push alerts.
-- Multi-source cross-verification (currently one research pass per race).
-
-## Origin
-
-Originally scoped as a capstone project for an AI-agents-for-PMs course;
-full product documentation (PRD, personas, competitive analysis, design
-brief) exists separately and is summarized above.
+- Multi-source cross-verification (one research pass per race, currently).
