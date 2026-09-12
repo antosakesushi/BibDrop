@@ -18,7 +18,7 @@ export function Dashboard() {
 
   return (
     <div style={{ padding: "24px 32px", maxWidth: 1100, margin: "0 auto" }}>
-      <h1 style={{ marginBottom: 4 }}>BibDrop</h1>
+      <h1 style={{ marginBottom: 4 }}>Dashboard</h1>
       <p style={{ color: "var(--text-secondary)", marginTop: 0 }}>
         The runner's job is to train. The agent's job is everything else.
       </p>
