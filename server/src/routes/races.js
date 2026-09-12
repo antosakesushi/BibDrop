@@ -39,3 +39,25 @@ racesRouter.get("/match/:goalTag", async (req, res, next) => {
     next(err);
   }
 });
+
+// PATCH /api/races/:slug/interest - moves a race between the journey
+// stages (none -> interested -> watching). This is a plain state update,
+// not an agent action, so it isn't rate-limited the way research/discovery
+// are - it costs nothing and carries no abuse risk.
+racesRouter.patch("/:slug/interest", async (req, res, next) => {
+  try {
+    const { stage } = req.body;
+    if (!["none", "interested", "watching"].includes(stage)) {
+      return res.status(400).json({ error: "stage must be one of: none, interested, watching" });
+    }
+    const race = await Race.findOneAndUpdate(
+      { slug: req.params.slug },
+      { interestStage: stage },
+      { new: true }
+    );
+    if (!race) return res.status(404).json({ error: "Race not found" });
+    res.json(race);
+  } catch (err) {
+    next(err);
+  }
+});

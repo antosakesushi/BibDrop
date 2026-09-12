@@ -4,6 +4,7 @@ import cors from "cors";
 import { connectDB } from "./db.js";
 import { racesRouter } from "./routes/races.js";
 import { researchRouter } from "./routes/research.js";
+import { discoverRouter } from "./routes/discover.js";
 
 const app = express();
 const allowedOrigins = (process.env.ALLOWED_ORIGINS || "http://localhost:5173").split(",");
@@ -18,6 +19,7 @@ app.set("trust proxy", 1);
 app.get("/api/health", (req, res) => res.json({ ok: true }));
 app.use("/api/races", racesRouter);
 app.use("/api/research", researchRouter);
+app.use("/api/discover", discoverRouter);
 
 // Basic error handler - last middleware
 app.use((err, req, res, next) => {

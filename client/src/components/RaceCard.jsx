@@ -16,8 +16,14 @@ export function RaceCard({ race }) {
         )}
       </div>
 
-      <div style={{ marginTop: 12 }}>
+      <div style={{ marginTop: 12, display: "flex", gap: 6, flexWrap: "wrap" }}>
         <ConfidenceTag confidence={race.lastResearchConfidence} />
+        {race.interestStage === "interested" && (
+          <span className="status-tag" style={{ background: "#7F77DD", color: "#26215C" }}>INTERESTED</span>
+        )}
+        {race.interestStage === "watching" && (
+          <span className="status-tag" style={{ background: "#F0997B", color: "#4A1B0C" }}>WATCHING</span>
+        )}
       </div>
 
       {race.agentSummary && (

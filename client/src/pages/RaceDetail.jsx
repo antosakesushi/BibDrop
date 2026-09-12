@@ -20,6 +20,7 @@ export function RaceDetail() {
   const [race, setRace] = useState(null);
   const [error, setError] = useState(null);
   const [researching, setResearching] = useState(false);
+  const [updatingStage, setUpdatingStage] = useState(false);
 
   function load() {
     api.getRace(slug).then(setRace).catch((e) => setError(e.message));
@@ -40,6 +41,19 @@ export function RaceDetail() {
     }
   }
 
+  async function handleSetStage(stage) {
+    setUpdatingStage(true);
+    setError(null);
+    try {
+      const updated = await api.setInterestStage(slug, stage);
+      setRace(updated);
+    } catch (e) {
+      setError(e.message);
+    } finally {
+      setUpdatingStage(false);
+    }
+  }
+
   if (!race) return <div style={{ padding: 24, color: "var(--text-secondary)" }}>Loading…</div>;
 
   return (
@@ -51,13 +65,45 @@ export function RaceDetail() {
         {race.city}, {race.country} · {race.season} · {race.courseType?.replace("_", " ")}
       </p>
 
-      <div style={{ margin: "16px 0" }}>
+      <div style={{ margin: "16px 0", display: "flex", gap: 8, flexWrap: "wrap" }}>
         <ConfidenceTag confidence={race.lastResearchConfidence} />
+        {race.interestStage === "interested" && (
+          <span className="status-tag" style={{ background: "#7F77DD", color: "#26215C" }}>INTERESTED</span>
+        )}
+        {race.interestStage === "watching" && (
+          <span className="status-tag" style={{ background: "#F0997B", color: "#4A1B0C" }}>WATCHING</span>
+        )}
       </div>
 
-      <button className="btn-primary" onClick={handleResearch} disabled={researching}>
-        {researching ? "Agent is researching…" : "Research this race"}
-      </button>
+      <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+        <button className="btn-primary" onClick={handleResearch} disabled={researching}>
+          {researching ? "Agent is researching…" : "Research this race"}
+        </button>
+
+        {race.lastResearchConfidence !== "not_yet_researched" && (
+          <>
+            {race.interestStage === "none" && (
+              <button className="btn-secondary" onClick={() => handleSetStage("interested")} disabled={updatingStage}>
+                Mark as interested
+              </button>
+            )}
+            {race.interestStage === "interested" && (
+              <button className="btn-secondary" onClick={() => handleSetStage("watching")} disabled={updatingStage}>
+                Watch for deadlines
+              </button>
+            )}
+            {race.interestStage !== "none" && (
+              <button
+                onClick={() => handleSetStage(race.interestStage === "watching" ? "interested" : "none")}
+                disabled={updatingStage}
+                style={{ background: "none", border: "none", color: "var(--text-secondary)", fontSize: 13, cursor: "pointer", textDecoration: "underline", padding: "4px 2px" }}
+              >
+                {race.interestStage === "watching" ? "Stop watching" : "Remove"}
+              </button>
+            )}
+          </>
+        )}
+      </div>
       {error && <p style={{ color: "var(--status-urgent)" }}>{error}</p>}
 
       {race.agentSummary && (
