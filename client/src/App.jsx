@@ -8,7 +8,6 @@ export default function App() {
     <div>
       <nav style={{ display: "flex", gap: 20, padding: "16px 32px", borderBottom: "1px solid #262626" }}>
         <Link to="/" style={{ fontWeight: 700, textDecoration: "none" }}>BibDrop</Link>
-        <Link to="/" style={{ color: "var(--text-secondary)", textDecoration: "none" }}>Dashboard</Link>
         <Link to="/deadlines" style={{ color: "var(--text-secondary)", textDecoration: "none" }}>Deadlines</Link>
       </nav>
       <Routes>
