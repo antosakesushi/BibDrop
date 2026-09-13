@@ -2,6 +2,8 @@ import { useEffect, useState } from "react";
 import { useParams, Link } from "react-router-dom";
 import { api } from "../api.js";
 import { ConfidenceTag } from "../components/StatusTag.jsx";
+import { InterestIndicator } from "../components/InterestIndicator.jsx";
+import { useAuth } from "../AuthContext.jsx";
 
 const EVENT_TYPE_LABEL = {
   lottery_open: "Lottery opens",
@@ -17,6 +19,7 @@ const EVENT_TYPE_LABEL = {
 
 export function RaceDetail() {
   const { slug } = useParams();
+  const { user } = useAuth();
   const [race, setRace] = useState(null);
   const [error, setError] = useState(null);
   const [researching, setResearching] = useState(false);
@@ -65,14 +68,9 @@ export function RaceDetail() {
         {race.city}, {race.country} · {race.season} · {race.courseType?.replace("_", " ")}
       </p>
 
-      <div style={{ margin: "16px 0", display: "flex", gap: 8, flexWrap: "wrap" }}>
+      <div style={{ margin: "16px 0", display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
         <ConfidenceTag confidence={race.lastResearchConfidence} />
-        {race.interestStage === "interested" && (
-          <span className="status-tag" style={{ background: "#7F77DD", color: "#26215C" }}>INTERESTED</span>
-        )}
-        {race.interestStage === "watching" && (
-          <span className="status-tag" style={{ background: "#F0997B", color: "#4A1B0C" }}>WATCHING</span>
-        )}
+        <InterestIndicator stage={race.interestStage} />
       </div>
 
       <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
@@ -80,7 +78,7 @@ export function RaceDetail() {
           {researching ? "Agent is researching…" : "Research this race"}
         </button>
 
-        {race.lastResearchConfidence !== "not_yet_researched" && (
+        {race.lastResearchConfidence !== "not_yet_researched" && user && (
           <>
             {race.interestStage === "none" && (
               <button className="btn-secondary" onClick={() => handleSetStage("interested")} disabled={updatingStage}>
@@ -102,6 +100,11 @@ export function RaceDetail() {
               </button>
             )}
           </>
+        )}
+        {race.lastResearchConfidence !== "not_yet_researched" && !user && (
+          <span style={{ color: "var(--text-secondary)", fontSize: 13 }}>
+            <Link to="/login" style={{ color: "var(--accent-primary)" }}>Log in</Link> to save races you're interested in.
+          </span>
         )}
       </div>
       {error && <p style={{ color: "var(--status-urgent)" }}>{error}</p>}

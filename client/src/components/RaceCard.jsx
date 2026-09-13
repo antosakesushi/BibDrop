@@ -1,5 +1,6 @@
 import { Link } from "react-router-dom";
 import { ConfidenceTag } from "./StatusTag.jsx";
+import { InterestIndicator } from "./InterestIndicator.jsx";
 
 export function RaceCard({ race }) {
   return (
@@ -11,19 +12,14 @@ export function RaceCard({ race }) {
             {race.city}, {race.country}
           </div>
         </div>
-        {race.isWorldMajor && (
-          <span className="status-tag status-tag--tracking">WORLD MAJOR</span>
-        )}
+        <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 6 }}>
+          {race.isWorldMajor && <span className="status-tag status-tag--tracking">WORLD MAJOR</span>}
+          <InterestIndicator stage={race.interestStage} />
+        </div>
       </div>
 
-      <div style={{ marginTop: 12, display: "flex", gap: 6, flexWrap: "wrap" }}>
+      <div style={{ marginTop: 12 }}>
         <ConfidenceTag confidence={race.lastResearchConfidence} />
-        {race.interestStage === "interested" && (
-          <span className="status-tag" style={{ background: "#7F77DD", color: "#26215C" }}>INTERESTED</span>
-        )}
-        {race.interestStage === "watching" && (
-          <span className="status-tag" style={{ background: "#F0997B", color: "#4A1B0C" }}>WATCHING</span>
-        )}
       </div>
 
       {race.agentSummary && (

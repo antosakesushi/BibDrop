@@ -58,18 +58,6 @@ const raceSchema = new mongoose.Schema(
 
     // --- Derived / display ---
     heroImageUrl: String,
-
-    // --- User journey stage (see race journey diagram from chat) ---
-    // Deliberately separate from lastResearchConfidence: research status is
-    // what the agent found, interestStage is what the human decided to do
-    // about it. "watching" implies "interested" - the UI enforces you can't
-    // watch without first being interested, but it's not enforced at the
-    // schema level so a manual DB edit isn't blocked.
-    interestStage: {
-      type: String,
-      enum: ["none", "interested", "watching"],
-      default: "none",
-    },
   },
   { timestamps: true }
 );
