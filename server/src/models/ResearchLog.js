@@ -11,7 +11,7 @@ const researchLogSchema = new mongoose.Schema(
     succeeded: Boolean,
     errorMessage: String,
   },
-  { timestamps: true }
+  { timestamps: true },
 );
 
 researchLogSchema.index({ createdAt: 1 });

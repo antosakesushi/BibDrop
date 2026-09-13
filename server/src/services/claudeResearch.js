@@ -1,12 +1,17 @@
+import { validateResearch, researchText } from "../lib/researchValidation.js";
 import Anthropic from "@anthropic-ai/sdk";
 
-const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+const anthropic = new Anthropic({
+  apiKey: process.env.ANTHROPIC_API_KEY,
+  timeout: 120000,
+  maxRetries: 1,
+});
 
 // NOTE ON MODEL / TOOL NAMES: verify the model id and the web_search tool's
 // `type` string against the current Anthropic API docs before you rely on
 // this in production - both can change, and this file was written without
 // running it against a live account. As of this writing the pattern is:
-// tools: [{ type: "web_search_20250305", name: "web_search" }]
+// tools: [{ type: "web_search_20250305", name: "web_search", max_uses: 5 }]
 // and a model string like "claude-sonnet-4-6". Check docs.claude.com.
 const MODEL = process.env.ANTHROPIC_MODEL || "claude-sonnet-4-6";
 
@@ -35,9 +40,52 @@ const RECORD_RESEARCH_TOOL = {
   input_schema: {
     type: "object",
     properties: {
+      edition: {
+        type: "string",
+        description:
+          "Race edition/year these registration events apply to, or unknown",
+      },
+      raceDate: {
+        type: ["string", "null"],
+        description: "Confirmed race date YYYY-MM-DD or null",
+      },
+      profileFacts: {
+        type: "array",
+        items: {
+          type: "object",
+          properties: {
+            key: {
+              type: "string",
+              enum: ["course", "elevation", "weather", "field", "bq"],
+            },
+            label: { type: "string" },
+            value: { type: "string" },
+            context: {
+              type: "string",
+              description:
+                "Year, units, definition and historical vs forecast distinction",
+            },
+            sourceUrl: { type: "string" },
+          },
+          required: ["key", "label", "value", "context", "sourceUrl"],
+        },
+      },
+      researchSources: {
+        type: "array",
+        items: {
+          type: "object",
+          properties: {
+            title: { type: "string" },
+            url: { type: "string" },
+            snippet: { type: "string" },
+          },
+          required: ["title", "url"],
+        },
+      },
       agentSummary: {
         type: "string",
-        description: "1-2 sentence plain-language summary of where this race's registration stands",
+        description:
+          "1-2 sentence plain-language summary of where this race's registration stands",
       },
       confidence: { type: "string", enum: ["low", "medium", "high"] },
       registrationEvents: {
@@ -47,9 +95,16 @@ const RECORD_RESEARCH_TOOL = {
           properties: {
             type: { type: "string", enum: EVENT_TYPES },
             label: { type: "string" },
-            date: { type: ["string", "null"], description: "YYYY-MM-DD or null if unknown" },
-            dateConfidence: { type: "string", enum: ["confirmed", "estimated", "unknown"] },
+            date: {
+              type: ["string", "null"],
+              description: "YYYY-MM-DD or null if unknown",
+            },
+            dateConfidence: {
+              type: "string",
+              enum: ["confirmed", "estimated", "unknown"],
+            },
             notes: { type: "string" },
+            sourceUrl: { type: "string" },
           },
           required: ["type", "label", "dateConfidence"],
         },
@@ -60,7 +115,12 @@ const RECORD_RESEARCH_TOOL = {
         description: "Short verbatim fragments the findings are based on",
       },
     },
-    required: ["agentSummary", "confidence", "registrationEvents", "sourceSnippets"],
+    required: [
+      "agentSummary",
+      "confidence",
+      "registrationEvents",
+      "sourceSnippets",
+    ],
   },
 };
 
@@ -108,42 +168,46 @@ export async function researchRace(race) {
 Official registration URL: ${race.officialUrl}
 City/Country: ${race.city}, ${race.country}
 
-Research this race's current registration timeline.`;
+Today: ${new Date().toISOString().slice(0, 10)}.
+Research this race's current registration timeline and edition. Also research course profile, elevation gain (distinguish gain from net change), historical weather, field size with year and denominator, and historical Boston qualifier percentages with year and definition. Include source URLs for every finding. Omit unsupported facts; do not infer personal qualification probability.`;
 
   const researchResponse = await anthropic.messages.create({
     model: MODEL,
-    max_tokens: 2000,
+    max_tokens: 4000,
     system: RESEARCH_SYSTEM_PROMPT,
     messages: [{ role: "user", content: researchPrompt }],
-    tools: [{ type: "web_search_20250305", name: "web_search" }],
+    tools: [{ type: "web_search_20250305", name: "web_search", max_uses: 5 }],
   });
 
-  const researchNotes = researchResponse.content
-    .filter((block) => block.type === "text")
-    .map((b) => b.text)
-    .join("\n")
-    .trim();
+  const researchNotes = researchText(researchResponse);
 
   if (!researchNotes) {
-    throw new Error("Research step returned no usable notes - the model may have failed to find the race's site.");
+    throw new Error(
+      "Research step returned no usable notes - the model may have failed to find the race's site.",
+    );
   }
 
   const extractionResponse = await anthropic.messages.create({
     model: MODEL,
-    max_tokens: 1500,
+    max_tokens: 3000,
     system: EXTRACTION_SYSTEM_PROMPT,
-    messages: [{ role: "user", content: `Research notes:\n\n${researchNotes}` }],
+    messages: [
+      { role: "user", content: `Research notes:\n\n${researchNotes}` },
+    ],
     tools: [RECORD_RESEARCH_TOOL],
     tool_choice: { type: "tool", name: "record_research_findings" },
   });
 
   const toolUseBlock = extractionResponse.content.find(
-    (block) => block.type === "tool_use" && block.name === "record_research_findings"
+    (block) =>
+      block.type === "tool_use" && block.name === "record_research_findings",
   );
 
   if (!toolUseBlock) {
-    throw new Error("Extraction step did not return the expected tool call - check the API response shape against current docs.");
+    throw new Error(
+      "Extraction step did not return the expected tool call - check the API response shape against current docs.",
+    );
   }
 
-  return toolUseBlock.input;
+  return validateResearch(toolUseBlock.input);
 }

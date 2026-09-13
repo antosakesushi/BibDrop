@@ -1,0 +1,50 @@
+{
+  "berlin": {
+    "src": "/images/berlin.jpg",
+    "alt": "Brandenburg Gate \u2014 destination photograph, not a course photograph",
+    "sourceUrl": "https://commons.wikimedia.org/wiki/File:Brandenburger_Tor_abends.jpg",
+    "license": "CC BY-SA 3.0",
+    "licenseUrl": "https://creativecommons.org/licenses/by-sa/3.0",
+    "artist": "<b><a href=\"//commons.wikimedia.org/wiki/User:Der_Wolf_im_Wald\" title=\"User:Der Wolf im Wald\">Thomas Wolf</a></b>, <small><a rel=\"nofollow\" class=\"external text\" href=\"http://www.foto-tw.de\">www.foto-tw.de</a></small>"
+  },
+  "london": {
+    "src": "/images/london.jpg",
+    "alt": "Tower Bridge \u2014 destination photograph, not a course photograph",
+    "sourceUrl": "https://commons.wikimedia.org/wiki/File:Tower_Bridge_at_Dawn.jpg",
+    "license": "CC BY-SA 3.0",
+    "licenseUrl": "https://creativecommons.org/licenses/by-sa/3.0",
+    "artist": "<a href=\"//commons.wikimedia.org/w/index.php?title=User:Fuzzypiggy&amp;action=edit&amp;redlink=1\" class=\"new\" title=\"User:Fuzzypiggy (page does not exist)\">Fuzzypiggy</a>"
+  },
+  "nyc": {
+    "src": "/images/nyc.jpg",
+    "alt": "Brooklyn Bridge \u2014 destination photograph, not a course photograph",
+    "sourceUrl": "https://commons.wikimedia.org/wiki/File:Brooklyn_Bridge_and_the_Lower_Manhattan_skyline_from_Pebble_Beach,_New_York.jpg",
+    "license": "CC BY-SA 4.0",
+    "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0",
+    "artist": "<a href=\"//commons.wikimedia.org/wiki/User:Espandero\" title=\"User:Espandero\">Christian David</a>"
+  },
+  "boston": {
+    "src": "/images/boston.jpg",
+    "alt": "Massachusetts State House \u2014 destination photograph, not a course photograph",
+    "sourceUrl": "https://commons.wikimedia.org/wiki/File:Massachusetts_State_House_Boston_November_2016.jpg",
+    "license": "CC BY-SA 4.0",
+    "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0",
+    "artist": "<a href=\"//commons.wikimedia.org/wiki/User:King_of_Hearts\" title=\"User:King of Hearts\">King of Hearts</a>"
+  },
+  "chicago": {
+    "src": "/images/chicago.jpg",
+    "alt": "Chicago \u2014 destination photograph, not a course photograph",
+    "sourceUrl": "https://commons.wikimedia.org/wiki/File:Chicago_River_ferry_b.jpg",
+    "license": "CC BY 2.0",
+    "licenseUrl": "https://creativecommons.org/licenses/by/2.0",
+    "artist": "<ul><li><a href=\"//commons.wikimedia.org/wiki/File:Chicago_River_ferry.jpg\" title=\"File:Chicago River ferry.jpg\">File:Chicago River ferry.jpg</a>: <a rel=\"nofollow\" class=\"external text\" href=\"https://www.flickr.com/people/21532476@N00\">John Picken</a></li>\n<li>derivative work: <a href=\"//commons.wikimedia.org/wiki/User:Georgfotoart\" title=\"User:Georgfotoart\">Georgfotoart</a></li></ul>"
+  },
+  "valencia": {
+    "src": "/images/valencia.jpg",
+    "alt": "Valencia \u2014 destination photograph, not a course photograph",
+    "sourceUrl": "https://commons.wikimedia.org/wiki/File:Malvarrosa_Beach,_Valencia,_Spain_(29812271043).jpg",
+    "license": "CC BY 2.0",
+    "licenseUrl": "https://creativecommons.org/licenses/by/2.0",
+    "artist": "<a rel=\"nofollow\" class=\"external text\" href=\"https://www.flickr.com/people/81894496@N06\">Boris  Dzhingarov</a>"
+  }
+}

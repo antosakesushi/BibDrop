@@ -29,16 +29,23 @@ authRouter.post("/register", async (req, res, next) => {
       return res.status(400).json({ error: "Enter a valid email address." });
     }
     if (!password || password.length < 8) {
-      return res.status(400).json({ error: "Password must be at least 8 characters." });
+      return res
+        .status(400)
+        .json({ error: "Password must be at least 8 characters." });
     }
 
     const existing = await User.findOne({ email: email.toLowerCase() });
     if (existing) {
-      return res.status(409).json({ error: "An account with that email already exists." });
+      return res
+        .status(409)
+        .json({ error: "An account with that email already exists." });
     }
 
     const passwordHash = await bcrypt.hash(password, 10);
-    const user = await User.create({ email: email.toLowerCase(), passwordHash });
+    const user = await User.create({
+      email: email.toLowerCase(),
+      passwordHash,
+    });
 
     const token = signToken(user._id.toString());
     res.cookie(COOKIE_NAME, token, COOKIE_OPTIONS);
@@ -52,7 +59,9 @@ authRouter.post("/login", async (req, res, next) => {
   try {
     const { email, password } = req.body;
     if (!email || !password) {
-      return res.status(400).json({ error: "Email and password are required." });
+      return res
+        .status(400)
+        .json({ error: "Email and password are required." });
     }
 
     const user = await User.findOne({ email: email.toLowerCase() });

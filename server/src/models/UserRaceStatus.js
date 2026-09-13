@@ -6,17 +6,29 @@ import mongoose from "mongoose";
 // document per (user, race) pair.
 const userRaceStatusSchema = new mongoose.Schema(
   {
-    userId: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true },
+    userId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+      required: true,
+    },
     raceSlug: { type: String, required: true },
+    entryOutcome: {
+      type: String,
+      enum: ["not_applied", "applied", "registered", "unsuccessful"],
+      default: "not_applied",
+    },
     interestStage: {
       type: String,
       enum: ["none", "interested", "watching"],
       default: "none",
     },
   },
-  { timestamps: true }
+  { timestamps: true },
 );
 
 userRaceStatusSchema.index({ userId: 1, raceSlug: 1 }, { unique: true });
 
-export const UserRaceStatus = mongoose.model("UserRaceStatus", userRaceStatusSchema);
+export const UserRaceStatus = mongoose.model(
+  "UserRaceStatus",
+  userRaceStatusSchema,
+);

@@ -17,10 +17,23 @@ async function handle(res) {
 const jsonHeaders = { "Content-Type": "application/json" };
 
 export const api = {
-  listRaces: () => fetch(`${BASE}/races`, { credentials: "include" }).then(handle),
-  getRace: (slug) => fetch(`${BASE}/races/${slug}`, { credentials: "include" }).then(handle),
+  monitoring: () => fetch(`${BASE}/monitoring`).then(handle),
+  notifications: () =>
+    fetch(`${BASE}/notifications`, { credentials: "include" }).then(handle),
+  readNotification: (id) =>
+    fetch(`${BASE}/notifications/${id}/read`, {
+      method: "PATCH",
+      credentials: "include",
+    }).then(handle),
+  listRaces: () =>
+    fetch(`${BASE}/races`, { credentials: "include" }).then(handle),
+  getRace: (slug) =>
+    fetch(`${BASE}/races/${slug}`, { credentials: "include" }).then(handle),
   researchRace: (slug) =>
-    fetch(`${BASE}/research/${slug}`, { method: "POST", credentials: "include" }).then(handle),
+    fetch(`${BASE}/research/${slug}`, {
+      method: "POST",
+      credentials: "include",
+    }).then(handle),
   setInterestStage: (slug, stage) =>
     fetch(`${BASE}/races/${slug}/interest`, {
       method: "PATCH",
@@ -28,12 +41,12 @@ export const api = {
       headers: jsonHeaders,
       body: JSON.stringify({ stage }),
     }).then(handle),
-  discoverRaces: (criteria) =>
+  discoverRaces: (criteria, messages = []) =>
     fetch(`${BASE}/discover`, {
       method: "POST",
       credentials: "include",
       headers: jsonHeaders,
-      body: JSON.stringify({ criteria }),
+      body: JSON.stringify({ criteria, messages }),
     }).then(handle),
   confirmDiscoveredRace: (candidate) =>
     fetch(`${BASE}/discover/confirm`, {
@@ -41,6 +54,14 @@ export const api = {
       credentials: "include",
       headers: jsonHeaders,
       body: JSON.stringify(candidate),
+    }).then(handle),
+
+  setOutcome: (slug, outcome) =>
+    fetch(`${BASE}/races/${slug}/outcome`, {
+      method: "PATCH",
+      credentials: "include",
+      headers: jsonHeaders,
+      body: JSON.stringify({ outcome }),
     }).then(handle),
 
   register: (email, password) =>
@@ -57,6 +78,10 @@ export const api = {
       headers: jsonHeaders,
       body: JSON.stringify({ email, password }),
     }).then(handle),
-  logout: () => fetch(`${BASE}/auth/logout`, { method: "POST", credentials: "include" }).then(handle),
+  logout: () =>
+    fetch(`${BASE}/auth/logout`, {
+      method: "POST",
+      credentials: "include",
+    }).then(handle),
   me: () => fetch(`${BASE}/auth/me`, { credentials: "include" }).then(handle),
 };

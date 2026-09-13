@@ -1,62 +1,58 @@
 # BibDrop
 
-A planning agent for marathon runners. Registration for popular races is scattered across dozens of sites, opens at different times, and often runs through lotteries or waitlists that are easy to miss. BibDrop points an agent at a race's official site and asks it to figure out where registration currently stands — lottery windows, general entry, price tiers — and report back with sources and a confidence level, rather than a human tracking it all by hand.
+Find a marathon worth running, understand how to enter, and keep its registration windows in one place. BibDrop helps runners prepare for entry; it cannot guarantee a place or a lottery result.
 
-Work in progress. Currently a local-only MVP: real agent, real database, no deployment yet.
+## Rebuilt prototype
 
-## How it works
+- **My races:** the next registration action, upcoming windows, and separate saved and watched lists.
+- **Discover:** a conversational researcher with follow-up questions, suggested prompts, structured results, and catalog search.
+- **Race details:** destination photography, entry timeline, course/elevation/weather/field-size/historical Boston-qualifier facts, and visible source links. Missing facts stay unknown.
+- **Deadlines:** registration events versus race dates, watched/all filters, and calendar export of confirmed dates only.
+- **Personal state:** save/watch status is separate from applied/registered/unsuccessful entry outcomes. Accounts use the existing API; demo choices stay in the browser.
+- Responsive layouts, mobile navigation, light/dark themes, and credited destination photographs.
 
-- A curated list of ~28 well-known marathons is seeded into the database by name and official URL only — no registration dates are hardcoded.
-- Opening a race and clicking "Research this race" triggers a two-step agent call: first the model researches freely using web search, then a second call converts those findings into a structured record via a forced tool call (more reliable than just asking the model to "reply in JSON," which turned out to be inconsistent).
-- Every researched race shows a confidence level and the source snippets the agent based its answer on, so it's clear what's verified versus inferred.
+## Try without a backend
 
-## Architecture
-
+```sh
+npm install --prefix client
+npm run dev --prefix client
 ```
-bibdrop/
-  server/   Express API, MongoDB via Mongoose, Anthropic API integration
-  client/   React (Vite) frontend
-```
 
-- `server/src/services/claudeResearch.js` — the agent itself. Free-form research with the `web_search` tool, then a forced tool call to extract structured data from the findings.
-- `server/src/routes/research.js` — the endpoint behind the "Research this race" button. Rate-limited, since it's the one route that spends API credits.
-- `server/src/seed/races.seed.js` — populates the race registry (identity only).
+Open `http://localhost:5173/?demo=1`. The explicit demo uses sample dates and research, simulated conversation, and browser-local choices. It makes no AI calls and sends no alerts. Calendar exports are labeled DEMO. Use the banner to switch to the live catalog.
 
-## Guardrails
+## Live development
 
-This isn't deployed publicly yet, but the code already has the basics in place for when it is:
-
-- Per-IP rate limiting and a daily budget cap on the research endpoint, DB-backed so they survive restarts.
-- Research only ever runs against races already in the seeded registry — no free-text URL field, so it can't be used as an open web-fetch proxy.
-- The research prompt treats fetched page content as data to extract from, never as instructions to follow, as a defense against prompt injection from untrusted race pages.
-
-These are cost/abuse ceilings, not a full security posture — an auth wall or captcha would be the next layer if this ever saw real traffic.
-
-## Local setup
-
-```bash
-# Server
+```sh
 cd server
-cp .env.example .env   # fill in MONGODB_URI and ANTHROPIC_API_KEY
 npm install
+cp .env.example .env
+# Configure MongoDB, Anthropic, and JWT_SECRET (see deployment notes).
 npm run seed
 npm run dev
-
-# Client (separate terminal)
-cd client
-npm install
-npm run dev
 ```
 
-Open the client's local URL (Vite prints it, typically `http://localhost:5173`). Open any race and click "Research this race" to watch the agent run.
+Start the client in a second terminal. The live API retains Express, MongoDB/Mongoose, cookie authentication, and Anthropic two-stage research. Discovery now accepts bounded conversation history and returns an answer plus structured race candidates. Research persists profile facts and their sources alongside registration events.
 
-## Deployment
+## Scope and verification
 
-Not live yet. `DEPLOYMENT.md` has a plan for Vercel (frontend) + Render (API) + MongoDB Atlas once it's ready to go public.
+**Monitoring and in-app alerts are implemented but disabled by default.** Set `MONITORING_ENABLED=true` only after verifying the configured research account. The API process must remain running: this is not yet a deployed always-on service. The worker checks watched races weekly, daily within 14 days of a future entry event. Research is shared across watchers, protected by database leases and an atomic UTC-day budget. A check failure retains the previous findings and retries after an hour.
 
-## Not built yet
+Registration changes are persisted with a retryable alert outbox. Confirmed dates generate in-app reminders at 7 days, 1 day, and on the date, deduplicated per account and event. Reminder dates use UTC because source timezone/time is not yet modeled; always check exact entry cutoffs at the official source. Reminders are evaluated while the process is running and do not backfill dates missed during downtime. Registered runners receive no further registration reminders. Email/push delivery is not implemented.
 
-- Scheduled/background monitoring — this is on-demand only, triggered by the button.
-- Goal-based recommendation ranking beyond a simple tag filter.
-- User accounts, saved calendars, email/push alerts.
-- Multi-source cross-verification (one research pass per race, currently).
+The redesign has been verified with a production client build, date/export/input tests, and Chrome flows covering desktop/mobile navigation, demo conversation follow-ups, watch confirmation, outcome persistence, calendar export, and theme switching. The configured MongoDB connection and real database persistence have been verified using an isolated temporary test database, covering research leases, failure recovery, alert deduplication, account ownership, and concurrent budget reservations. Paid model calls remain unverified in this build. Demo and injected test research do not validate research accuracy.
+
+```sh
+npm run build --prefix client
+node --test tests/prototype.test.mjs tests/monitoring.test.mjs
+# Uses configured MongoDB in an isolated temporary database, then removes it:
+node tests/database-integration.mjs
+# With Vite running and Playwright plus Chrome available:
+node tests/browser-check.cjs
+# Or set PLAYWRIGHT_MODULE to the installed Playwright module path.
+```
+
+Photo attribution and license links are shown on race details; metadata is in `client/src/data/image-credits.json`. Unillustrated catalog races show a destination placeholder rather than an unrelated photograph.
+
+See `DEPLOYMENT.md` for the existing deployment plan. This prototype has not been deployed.
+
+Research preserves citation URLs for extraction and rejects confirmed dates without a date and source URL. The existing basic web-search tool is retained with a maximum of five searches per research step; see [Anthropic web search documentation](https://platform.claude.com/docs/en/agents-and-tools/tool-use/web-search-tool). Each check includes a separate structured extraction call.

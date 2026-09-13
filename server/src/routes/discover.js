@@ -2,11 +2,12 @@ import { Router } from "express";
 import { Race } from "../models/Race.js";
 import { DiscoveryLog } from "../models/DiscoveryLog.js";
 import { discoverRaces } from "../services/raceDiscovery.js";
+import { validateDiscoveryInput, safeHttpUrl } from "../lib/discoveryInput.js";
 import { discoveryRateLimiter } from "../middleware/discoveryRateLimiter.js";
 
 export const discoverRouter = Router();
 
-const MAX_CRITERIA_LENGTH = 300;
+const MAX_CRITERIA_LENGTH = 600;
 
 function slugify(name) {
   return name
@@ -23,22 +24,22 @@ discoverRouter.post("/", discoveryRateLimiter, async (req, res, next) => {
   const { criteria } = req.body;
   const ip = req.ip;
 
-  if (!criteria || typeof criteria !== "string" || !criteria.trim()) {
-    return res.status(400).json({ error: "Criteria text is required." });
-  }
-  if (criteria.length > MAX_CRITERIA_LENGTH) {
-    return res.status(400).json({ error: `Criteria must be under ${MAX_CRITERIA_LENGTH} characters.` });
-  }
+  const invalid = validateDiscoveryInput(req.body);
+  if (invalid) return res.status(400).json({ error: invalid });
 
   try {
-    const candidates = await discoverRaces(criteria.trim());
+    const result = await discoverRaces(
+      criteria.trim(),
+      req.body.messages || [],
+    );
+    const candidates = result.candidates;
     await DiscoveryLog.create({
       requesterIp: ip,
       criteria: criteria.trim(),
       candidateCount: candidates.length,
       succeeded: true,
     });
-    res.json({ candidates });
+    res.json(result);
   } catch (err) {
     await DiscoveryLog.create({
       requesterIp: ip,
@@ -56,16 +57,24 @@ discoverRouter.post("/", discoveryRateLimiter, async (req, res, next) => {
 // candidate.
 discoverRouter.post("/confirm", async (req, res, next) => {
   try {
-    const { name, officialUrl, city, country, courseType, season, tags } = req.body;
+    const { name, officialUrl, city, country, courseType, season, tags } =
+      req.body;
 
-    if (!name || !officialUrl) {
-      return res.status(400).json({ error: "name and officialUrl are required." });
+    if (
+      typeof name !== "string" ||
+      !name.trim() ||
+      name.length > 200 ||
+      !safeHttpUrl(officialUrl)
+    ) {
+      return res
+        .status(400)
+        .json({ error: "name and officialUrl are required." });
     }
 
     const slug = slugify(name);
     const existing = await Race.findOne({ slug });
     if (existing) {
-      return res.status(409).json({ error: `A race with slug "${slug}" already exists.`, existingSlug: slug });
+      return res.json(existing);
     }
 
     const race = await Race.create({

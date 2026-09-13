@@ -10,7 +10,7 @@ const discoveryLogSchema = new mongoose.Schema(
     succeeded: Boolean,
     errorMessage: String,
   },
-  { timestamps: true }
+  { timestamps: true },
 );
 
 discoveryLogSchema.index({ createdAt: 1 });

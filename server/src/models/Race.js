@@ -25,8 +25,9 @@ const registrationEventSchema = new mongoose.Schema(
       default: "unknown",
     },
     notes: String,
+    sourceUrl: String,
   },
-  { _id: false }
+  { _id: false },
 );
 
 const raceSchema = new mongoose.Schema(
@@ -46,6 +47,18 @@ const raceSchema = new mongoose.Schema(
     tags: [String], // e.g. ["bq-friendly", "destination", "charity-heavy"]
 
     // --- Agent-researched fields (populated by the live research endpoint) ---
+    edition: String,
+    raceDate: Date,
+    profileFacts: [
+      {
+        key: String,
+        label: String,
+        value: String,
+        context: String,
+        sourceUrl: String,
+      },
+    ],
+    researchSources: [{ title: String, url: String, snippet: String }],
     registrationEvents: [registrationEventSchema],
     agentSummary: String, // 1-2 sentence agent-written summary of registration landscape
     lastResearchedAt: Date,
@@ -58,8 +71,16 @@ const raceSchema = new mongoose.Schema(
 
     // --- Derived / display ---
     heroImageUrl: String,
+    pendingAlerts: {
+      type: [{ key: String, title: String, body: String, sourceUrl: String }],
+      select: false,
+    },
+    nextResearchAt: Date,
+    researchLeaseUntil: Date,
+    researchLeaseToken: { type: String, select: false },
+    lastMonitorError: String,
   },
-  { timestamps: true }
+  { timestamps: true },
 );
 
 export const Race = mongoose.model("Race", raceSchema);

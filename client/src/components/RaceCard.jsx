@@ -1,32 +1,61 @@
 import { Link } from "react-router-dom";
-import { ConfidenceTag } from "./StatusTag.jsx";
-import { InterestIndicator } from "./InterestIndicator.jsx";
-
+import { RaceImage } from "./RaceImage";
+import { RaceActions } from "./RaceActions";
+import { Icon } from "./Icon";
+import { courseLabel, upcoming, timing } from "../lib/races";
 export function RaceCard({ race }) {
+  const next = upcoming([race])[0];
   return (
-    <Link to={`/races/${race.slug}`} className="card" style={{ display: "block", textDecoration: "none", minWidth: 260 }}>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
-        <div>
-          <div style={{ fontWeight: 700, fontSize: 16 }}>{race.name}</div>
-          <div style={{ color: "var(--text-secondary)", fontSize: 13, marginTop: 2 }}>
-            {race.city}, {race.country}
-          </div>
+    <article className="race-card">
+      <Link
+        to={`/races/${race.slug}`}
+        className="image-link"
+        aria-label={`View ${race.name}`}
+      >
+        <RaceImage race={race} />
+      </Link>
+      <div className="race-card-body">
+        <div className="section-head">
+          <span className="eyebrow">
+            {race.season === "fall" ? "Autumn" : race.season || "Marathon"}
+          </span>
+          {race.interestStage === "watching" && (
+            <span className="pill">
+              <Icon name="bell" size={12} />
+              Watching
+            </span>
+          )}
         </div>
-        <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 6 }}>
-          {race.isWorldMajor && <span className="status-tag status-tag--tracking">WORLD MAJOR</span>}
-          <InterestIndicator stage={race.interestStage} />
-        </div>
-      </div>
-
-      <div style={{ marginTop: 12 }}>
-        <ConfidenceTag confidence={race.lastResearchConfidence} />
-      </div>
-
-      {race.agentSummary && (
-        <p style={{ color: "var(--text-secondary)", fontSize: 13, marginTop: 10, marginBottom: 0 }}>
-          {race.agentSummary}
+        <Link to={`/races/${race.slug}`} className="race-title">
+          {race.name}
+        </Link>
+        <p className="location">
+          <Icon name="pin" size={15} />
+          {race.city}, {race.country}
         </p>
-      )}
-    </Link>
+        <div className="race-meta">
+          <span>
+            <Icon name="route" size={15} />
+            {courseLabel(race.courseType)}
+          </span>
+          <span>
+            <Icon name="calendar" size={15} />
+            {next ? timing(next) : "Entry dates unconfirmed"}
+          </span>
+        </div>
+        <div className="insight">
+          <Icon name="spark" size={17} />
+          <p>
+            {race.matchReason ||
+              race.agentSummary ||
+              "Explore the course and entry routes. Registration research is still needed."}
+          </p>
+        </div>
+        <RaceActions race={race} compact />
+        <Link className="detail-link" to={`/races/${race.slug}`}>
+          Race details <Icon name="arrow" size={16} />
+        </Link>
+      </div>
+    </article>
   );
 }

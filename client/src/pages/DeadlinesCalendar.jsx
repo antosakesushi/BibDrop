@@ -1,114 +1,181 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { Link } from "react-router-dom";
-import { api } from "../api.js";
-import { InterestIndicator } from "../components/InterestIndicator.jsx";
-
-const GROUP_ORDER = [
-  "lottery_close",
-  "general_entry_close",
-  "waitlist_open",
-  "price_tier_change",
-  "lottery_open",
-  "general_entry_open",
-  "wave_drop",
-  "lottery_results",
-  "other",
-];
-
-const GROUP_CONFIG = {
-  lottery_close: { heading: "Lottery entry closing", cta: "Enter the lottery" },
-  general_entry_close: { heading: "Registration closing", cta: "Register now" },
-  waitlist_open: { heading: "Waitlist open", cta: "Join the waitlist" },
-  price_tier_change: { heading: "Price increasing soon", cta: "Register before the price goes up" },
-  lottery_open: { heading: "Lottery entry open", cta: "Enter the lottery" },
-  general_entry_open: { heading: "Registration open", cta: "Register now" },
-  wave_drop: { heading: "Wave pricing update", cta: "Check wave pricing" },
-  lottery_results: { heading: "Lottery results", cta: "Check your results" },
-  other: { heading: "Other updates", cta: "View details" },
-};
-
-function daysUntil(dateStr) {
-  const diffMs = new Date(dateStr).setHours(0, 0, 0, 0) - new Date().setHours(0, 0, 0, 0);
-  return Math.round(diffMs / (1000 * 60 * 60 * 24));
-}
-
+import { useRaces } from "../RaceContext";
+import { LoadState } from "../components/LoadState";
+import { Icon } from "../components/Icon";
+import { RaceImage } from "../components/RaceImage";
+import { upcoming, dateLabel, timing, makeICS, daysUntil } from "../lib/races";
 export function DeadlinesCalendar() {
-  const [races, setRaces] = useState(null);
-
-  useEffect(() => {
-    api.listRaces().then(setRaces);
-  }, []);
-
-  if (!races) return <div style={{ padding: 24, color: "var(--text-secondary)" }}>Loading…</div>;
-
-  const allEvents = races
-    .flatMap((race) =>
-      (race.registrationEvents || [])
-        .filter((e) => e.date)
-        .map((e) => ({
-          ...e,
-          raceName: race.name,
-          raceSlug: race.slug,
-          officialUrl: race.officialUrl,
-          interestStage: race.interestStage,
-        }))
-    )
-    .filter((e) => daysUntil(e.date) >= 0)
-    // Watched races surface first within each group, then soonest date.
-    .sort((a, b) => {
-      if (a.interestStage === "watching" && b.interestStage !== "watching") return -1;
-      if (b.interestStage === "watching" && a.interestStage !== "watching") return 1;
-      return new Date(a.date) - new Date(b.date);
-    });
-
-  const groups = GROUP_ORDER.map((type) => ({
-    type,
-    config: GROUP_CONFIG[type],
-    events: allEvents.filter((e) => e.type === type),
-  })).filter((g) => g.events.length > 0);
-
+  const { races, loading, error, demo } = useRaces();
+  const [view, setView] = useState("deadlines");
+  const [all, setAll] = useState(false);
+  if (loading || error) return <LoadState />;
+  const pool = races.filter((r) => all || r.interestStage === "watching");
+  const events =
+    view === "deadlines"
+      ? upcoming(pool.filter((r) => r.entryOutcome !== "registered"))
+      : pool
+          .filter(
+            (r) => daysUntil(r.raceDate) !== null && daysUntil(r.raceDate) >= 0,
+          )
+          .map((r) => ({
+            race: r,
+            type: "race",
+            label: "Race day",
+            date: r.raceDate,
+            dateConfidence: demo ? "estimated" : "confirmed",
+          }))
+          .sort((a, b) => new Date(a.date) - new Date(b.date));
+  const unannounced = pool.filter((r) =>
+    view === "deadlines" ? !upcoming([r]).length : !r.raceDate,
+  );
+  function download() {
+    const blob = new Blob([makeICS(events)], { type: "text/calendar" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = demo ? "bibdrop-DEMO.ics" : "bibdrop-deadlines.ics";
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+  }
   return (
-    <div style={{ padding: "24px 32px", maxWidth: 800, margin: "0 auto" }}>
-      <h1>Deadlines</h1>
-
-      {allEvents.length === 0 && (
-        <p style={{ color: "var(--text-secondary)" }}>
-          No upcoming dated events yet - research a few races to populate this page.
-        </p>
-      )}
-
-      {groups.map((group) => (
-        <div key={group.type} style={{ marginBottom: 28 }}>
-          <h2 style={{ fontSize: 15, color: "var(--text-secondary)", textTransform: "uppercase", letterSpacing: "0.04em", marginBottom: 10 }}>
-            {group.config.heading} ({group.events.length})
-          </h2>
-          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-            {group.events.map((e, i) => {
-              const days = daysUntil(e.date);
-              const urgent = days <= 7;
-              return (
-                <div key={i} className="card" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 16 }}>
-                  <div>
-                    <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                      <Link to={`/races/${e.raceSlug}`} style={{ fontWeight: 600, textDecoration: "none" }}>
-                        {e.raceName}
-                      </Link>
-                      <InterestIndicator stage={e.interestStage} compact />
-                    </div>
-                    <div style={{ color: "var(--text-secondary)", fontSize: 13 }}>{e.label}</div>
-                    <div style={{ fontSize: 12, marginTop: 4, color: urgent ? "var(--status-urgent)" : "var(--text-secondary)" }}>
-                      {new Date(e.date).toLocaleDateString()} · {days === 0 ? "today" : `${days} day${days === 1 ? "" : "s"} left`}
-                    </div>
-                  </div>
-                  <a href={e.officialUrl} target="_blank" rel="noreferrer" className="btn-primary" style={{ textDecoration: "none", whiteSpace: "nowrap", fontSize: 13 }}>
-                    {group.config.cta}
-                  </a>
-                </div>
-              );
-            })}
-          </div>
+    <>
+      <div className="page-heading">
+        <div>
+          <p className="eyebrow">THE DATES THAT MATTER</p>
+          <h1>Your registration timeline.</h1>
+          <p className="muted">
+            Openings, closing windows and the start lines beyond them.
+          </p>
         </div>
-      ))}
-    </div>
+        <button
+          className="btn-secondary"
+          onClick={download}
+          disabled={!events.some((e) => e.dateConfidence === "confirmed")}
+        >
+          <Icon name="download" />
+          Export confirmed dates
+        </button>
+      </div>
+      <div className="section-head spaced">
+        <div className="segmented">
+          <button
+            aria-pressed={view === "deadlines"}
+            onClick={() => setView("deadlines")}
+          >
+            Registration deadlines
+          </button>
+          <button
+            aria-pressed={view === "races"}
+            onClick={() => setView("races")}
+          >
+            Race dates
+          </button>
+        </div>
+        <label className="checkbox">
+          <input
+            type="checkbox"
+            checked={all}
+            onChange={(e) => setAll(e.target.checked)}
+          />
+          Include all catalog races
+        </label>
+      </div>
+      <div className="timeline-layout">
+        <section>
+          {events.length ? (
+            <ol className="timeline calendar-timeline">
+              {events.map((e, i) => (
+                <li key={`${e.race.slug}-${i}`}>
+                  <span className="timeline-icon">
+                    <Icon
+                      name={daysUntil(e.date) <= 3 ? "timer" : "calendar"}
+                    />
+                  </span>
+                  <article
+                    className={`panel calendar-event ${daysUntil(e.date) <= 3 ? "near" : ""}`}
+                  >
+                    <div className="section-head">
+                      <span className="eyebrow">{dateLabel(e.date)}</span>
+                      <span className="pill">{timing(e)}</span>
+                    </div>
+                    <div className="event-body">
+                      <div>
+                        <h2>
+                          <Link to={`/races/${e.race.slug}`}>
+                            {e.race.name}
+                          </Link>
+                        </h2>
+                        <p>{e.label}</p>
+                        <p className="muted small">
+                          {e.dateConfidence} {demo ? "· Sample event" : ""}
+                        </p>
+                      </div>
+                      <Link
+                        className="event-photo"
+                        to={`/races/${e.race.slug}`}
+                        aria-label={`View ${e.race.name}`}
+                      >
+                        <RaceImage race={e.race} />
+                      </Link>
+                    </div>
+                    <Link
+                      className="btn-secondary"
+                      to={`/races/${e.race.slug}`}
+                    >
+                      View {view === "races" ? "race" : "entry"} details{" "}
+                      <Icon name="arrow" size={16} />
+                    </Link>
+                  </article>
+                </li>
+              ))}
+            </ol>
+          ) : (
+            <div className="empty">
+              <Icon name="calendar" size={32} />
+              <h2>No upcoming dates here yet</h2>
+              <p>
+                Watch a race to bring its registration windows into your
+                timeline.
+              </p>
+              <Link className="btn-primary" to="/discover">
+                Find a race
+              </Link>
+            </div>
+          )}
+        </section>
+        <aside className="panel">
+          <p className="eyebrow">STILL ON YOUR RADAR</p>
+          <h2>Dates to confirm</h2>
+          {unannounced.length ? (
+            unannounced.map((r) => (
+              <Link
+                key={r.slug}
+                className="pending-race"
+                to={`/races/${r.slug}`}
+              >
+                <Icon name="calendar" size={17} />
+                <span>
+                  <strong>{r.name}</strong>
+                  <small>No upcoming verified date</small>
+                </span>
+                <Icon name="arrow" size={14} />
+              </Link>
+            ))
+          ) : (
+            <p className="muted">
+              No additional races awaiting dates in this view.
+            </p>
+          )}
+          <div className="monitor-note">
+            <Icon name="info" size={16} />
+            <span>
+              Calendar exports are snapshots, not subscriptions. Estimated dates
+              are excluded.
+            </span>
+          </div>
+        </aside>
+      </div>
+    </>
   );
 }
