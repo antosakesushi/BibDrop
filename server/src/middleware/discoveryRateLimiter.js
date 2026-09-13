@@ -1,6 +1,8 @@
 import { DiscoveryLog } from "../models/DiscoveryLog.js";
 
-const PER_IP_LIMIT = Number(process.env.DISCOVERY_RATE_LIMIT_PER_IP_PER_HOUR || 2);
+const PER_IP_LIMIT = Number(
+  process.env.DISCOVERY_RATE_LIMIT_PER_IP_PER_HOUR || 10,
+);
 const DAILY_BUDGET_CAP = Number(process.env.DISCOVERY_DAILY_BUDGET_CAP || 20);
 
 /**
@@ -17,7 +19,10 @@ export async function discoveryRateLimiter(req, res, next) {
     const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
 
     const [ipCountLastHour, globalCountLastDay] = await Promise.all([
-      DiscoveryLog.countDocuments({ requesterIp: ip, createdAt: { $gte: oneHourAgo } }),
+      DiscoveryLog.countDocuments({
+        requesterIp: ip,
+        createdAt: { $gte: oneHourAgo },
+      }),
       DiscoveryLog.countDocuments({ createdAt: { $gte: oneDayAgo } }),
     ]);
 
@@ -29,7 +34,8 @@ export async function discoveryRateLimiter(req, res, next) {
 
     if (globalCountLastDay >= DAILY_BUDGET_CAP) {
       return res.status(429).json({
-        error: "This demo has hit its daily discovery budget. Please check back tomorrow.",
+        error:
+          "This demo has hit its daily discovery budget. Please check back tomorrow.",
       });
     }
 

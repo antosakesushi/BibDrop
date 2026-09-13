@@ -64,7 +64,7 @@ export async function refreshRace(
     };
     fields.nextResearchAt = nextCheck(fields);
     const update = { $set: fields };
-    if (changed)
+    if (changed || !race.lastResearchedAt)
       update.$push = {
         pendingAlerts: {
           key: `change:${slug}:${token}`,

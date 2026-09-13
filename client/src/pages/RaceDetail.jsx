@@ -22,7 +22,8 @@ const factTypes = [
 ];
 export function RaceDetail() {
   const { slug } = useParams();
-  const { races, loading, error, demo, updateRace, setOutcome } = useRaces();
+  const { races, loading, error, demo, monitoring, updateRace, setOutcome } =
+    useRaces();
   const [busy, setBusy] = useState(false);
   const [failure, setFailure] = useState("");
   const race = races.find((r) => r.slug === slug);
@@ -264,10 +265,24 @@ export function RaceDetail() {
             <div className="monitor-note">
               <Icon name="info" size={17} />
               <span>
-                Watchlist only in this prototype. Automatic monitoring and email
-                alerts are not active.
+                {!demo && monitoring.enabled
+                  ? "Automatic checks are active. Updates appear in Alerts; email delivery is not enabled."
+                  : "Automatic checks are paused. Research is available on request."}
               </span>
             </div>
+            {race.lastMonitorError && (
+              <p className="error" role="status">
+                {race.lastMonitorError}
+              </p>
+            )}
+            {!demo &&
+              monitoring.enabled &&
+              race.interestStage === "watching" &&
+              race.nextResearchAt && (
+                <p className="muted small">
+                  Next automatic check: {dateLabel(race.nextResearchAt)}.
+                </p>
+              )}
             {safeUrl(race.officialUrl) && (
               <a
                 className="btn-secondary full"

@@ -19,18 +19,27 @@ export function Alerts() {
     }
     setLoading(true);
     setError("");
-    api
-      .notifications()
-      .then((data) => {
-        if (active) setItems(data);
-      })
-      .catch((e) => {
-        if (active) setError(e.message);
-      })
-      .finally(() => {
-        if (active) setLoading(false);
-      });
+    const refresh = () =>
+      api
+        .notifications()
+        .then((data) => {
+          if (active) {
+            setItems(data);
+            setError("");
+          }
+        })
+        .catch((e) => {
+          if (active) setError(e.message);
+        })
+        .finally(() => {
+          if (active) setLoading(false);
+        });
+    refresh();
+    const timer = setInterval(refresh, 30000);
+    window.addEventListener("focus", refresh);
     return () => {
+      clearInterval(timer);
+      window.removeEventListener("focus", refresh);
       active = false;
     };
   }, [user, demo]);

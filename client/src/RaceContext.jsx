@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useState } from "react";
+import { createContext, useContext, useEffect, useState, useRef } from "react";
 import { api } from "./api";
 import { useAuth } from "./AuthContext";
 import { demoRaces } from "./data/demo";
@@ -17,16 +17,25 @@ export function RaceProvider({ children }) {
       ? new URLSearchParams(window.location.search).get("demo") === "1"
       : read("bibdrop-demo", false),
   );
+  useEffect(() => {
+    localStorage.setItem("bibdrop-demo", JSON.stringify(demo));
+  }, [demo]);
   const [monitoring, setMonitoring] = useState({ enabled: false });
   useEffect(() => {
     let active = true;
-    api
-      .monitoring()
-      .then((data) => {
-        if (active) setMonitoring(data);
-      })
-      .catch(() => {});
+    const check = () =>
+      api
+        .monitoring()
+        .then((data) => {
+          if (active) setMonitoring(data);
+        })
+        .catch(() => {
+          if (active) setMonitoring({ enabled: false, unavailable: true });
+        });
+    check();
+    const timer = setInterval(check, 30000);
     return () => {
+      clearInterval(timer);
       active = false;
     };
   }, []);
@@ -34,6 +43,17 @@ export function RaceProvider({ children }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [revision, setRevision] = useState(0);
+  const mutationRevision = useRef(0);
+  useEffect(() => {
+    if (demo) return;
+    const refresh = () => setRevision((value) => value + 1);
+    const timer = setInterval(refresh, 30000);
+    window.addEventListener("focus", refresh);
+    return () => {
+      clearInterval(timer);
+      window.removeEventListener("focus", refresh);
+    };
+  }, [demo]);
   useEffect(() => {
     if (authLoading) return;
     let active = true;
@@ -52,10 +72,11 @@ export function RaceProvider({ children }) {
           entryOutcome: "not_applied",
         })),
       );
+    const atRevision = mutationRevision.current;
     api
       .listRaces()
       .then((data) => {
-        if (active) setRaces(data);
+        if (active && atRevision === mutationRevision.current) setRaces(data);
       })
       .catch((e) => {
         if (active) setError(e.message);
@@ -77,6 +98,7 @@ export function RaceProvider({ children }) {
     setDemo(value);
   }
   function updateRace(race) {
+    mutationRevision.current++;
     setRaces((old) =>
       old.some((r) => r.slug === race.slug)
         ? old.map((r) => (r.slug === race.slug ? { ...r, ...race } : r))

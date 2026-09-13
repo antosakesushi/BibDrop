@@ -5,9 +5,23 @@ import { refreshRace } from "../services/refreshRace.js";
 import { notifyWatchers, flushRaceAlerts } from "../services/notifications.js";
 import { reminders } from "../lib/monitoring.js";
 let running = false;
+const health = { lastStartedAt: null, lastCompletedAt: null, lastError: null };
+export function getMonitorStatus() {
+  return {
+    enabled: process.env.MONITORING_ENABLED === "true",
+    running,
+    ...health,
+    channel: "in_app",
+    baselineDays: 7,
+    nearWindowDays: 1,
+    emailEnabled: false,
+  };
+}
 export async function monitorTick({ refresh = refreshRace } = {}) {
   if (running) return;
   running = true;
+  health.lastStartedAt = new Date();
+  health.lastError = null;
   try {
     const slugs = await UserRaceStatus.distinct("raceSlug", {
       interestStage: "watching",
@@ -28,10 +42,16 @@ export async function monitorTick({ refresh = refreshRace } = {}) {
           continue;
         await refresh(race.slug);
       } catch (e) {
+        health.lastError =
+          "A race check failed; previous findings were retained.";
         console.error("[monitor] Race check failed:", race.slug, e.message);
       }
     }
+  } catch (e) {
+    health.lastError = "Monitoring could not complete its latest cycle.";
+    throw e;
   } finally {
+    health.lastCompletedAt = new Date();
     running = false;
   }
 }

@@ -1,4 +1,5 @@
-import { useState } from "react";
+import ReactMarkdown from "react-markdown";
+import { useState, useEffect, useRef } from "react";
 import { useSearchParams, Link } from "react-router-dom";
 import { useRaces } from "../RaceContext";
 import { api } from "../api";
@@ -24,12 +25,20 @@ export function Discover() {
   const [query, setQuery] = useState("");
   const [adding, setAdding] = useState("");
   const [demoFilter, setDemoFilter] = useState("");
+  const messagesEnd = useRef(null);
+  useEffect(() => {
+    if (messages.length || busy)
+      messagesEnd.current?.scrollIntoView({ block: "nearest" });
+  }, [messages, busy]);
   async function send(text = input) {
     text = text.trim();
     if (!text || busy) return;
     setBusy(true);
     setFailure("");
+    const previousMessages = messages;
     const history = [...messages, { role: "user", content: text }];
+    setMessages(history);
+    setInput("");
     try {
       let result;
       if (demo) {
@@ -71,6 +80,8 @@ export function Discover() {
       setCandidates(result.candidates);
       setInput("");
     } catch (e) {
+      setMessages(previousMessages);
+      setInput(text);
       setFailure(e.message);
     } finally {
       setBusy(false);
@@ -149,14 +160,39 @@ export function Discover() {
                 <span className="message-author">
                   {m.role === "user" ? "You" : "Researcher"}
                 </span>
-                {m.content}
+                {m.role === "assistant" ? (
+                  <ReactMarkdown
+                    skipHtml
+                    components={{
+                      a: ({ href, children }) =>
+                        safeUrl(href) ? (
+                          <a
+                            href={safeUrl(href)}
+                            target="_blank"
+                            rel="noreferrer"
+                          >
+                            {children}
+                          </a>
+                        ) : (
+                          <span>{children}</span>
+                        ),
+                      img: () => null,
+                    }}
+                  >
+                    {m.content}
+                  </ReactMarkdown>
+                ) : (
+                  m.content
+                )}
               </div>
             ))}
             {busy && (
               <div className="message assistant" role="status">
-                Checking race sources and preparing your results…
+                Checking race sources and preparing your results… This can take
+                a few minutes.
               </div>
             )}
+            <div ref={messagesEnd} />
           </div>
           {!messages.length && (
             <div className="prompt-list">
@@ -185,6 +221,7 @@ export function Discover() {
             </label>
             <textarea
               id="research-input"
+              disabled={busy}
               value={input}
               onChange={(e) => setInput(e.target.value)}
               maxLength={600}

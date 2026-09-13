@@ -46,7 +46,8 @@ export function AuthPage({ create = false }) {
           </span>
         </div>
         <p className="small">
-          Prototype: automatic monitoring and email alerts are not active.
+          Save races, watch registration, and review updates in your Alerts.
+          Email delivery is not enabled.
         </p>
       </div>
       <section className="panel auth-form">

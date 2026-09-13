@@ -1308,3 +1308,17 @@ button {
   border-radius: 16px;
   background: var(--bg-card);
 }
+
+.message.assistant {
+  white-space: normal;
+}
+.message.assistant p {
+  margin: 8px 0;
+}
+.message.assistant ul,
+.message.assistant ol {
+  padding-left: 20px;
+}
+.message.assistant a {
+  text-decoration: underline;
+}

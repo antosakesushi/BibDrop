@@ -8,7 +8,7 @@ export const racesRouter = Router();
 // Merges each user's personal interestStage onto the shared race list.
 // Logged-out visitors just see "none" for everything - the catalog itself
 // is public, only the personal status is gated.
-async function attachInterestStage(races, userId) {
+export async function attachInterestStage(races, userId) {
   if (!userId) {
     return races.map((r) => ({ ...r.toObject(), interestStage: "none" }));
   }

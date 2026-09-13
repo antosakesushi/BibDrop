@@ -39,7 +39,9 @@ Start the client in a second terminal. The live API retains Express, MongoDB/Mon
 
 Registration changes are persisted with a retryable alert outbox. Confirmed dates generate in-app reminders at 7 days, 1 day, and on the date, deduplicated per account and event. Reminder dates use UTC because source timezone/time is not yet modeled; always check exact entry cutoffs at the official source. Reminders are evaluated while the process is running and do not backfill dates missed during downtime. Registered runners receive no further registration reminders. Email/push delivery is not implemented.
 
-The redesign has been verified with a production client build, date/export/input tests, and Chrome flows covering desktop/mobile navigation, demo conversation follow-ups, watch confirmation, outcome persistence, calendar export, and theme switching. The configured MongoDB connection and real database persistence have been verified using an isolated temporary test database, covering research leases, failure recovery, alert deduplication, account ownership, and concurrent budget reservations. Paid model calls remain unverified in this build. Demo and injected test research do not validate research accuracy.
+The redesign has been verified with a production client build, date/export/input tests, and Chrome flows covering desktop/mobile navigation, demo conversation follow-ups, watch confirmation, outcome persistence, calendar export, and theme switching. The configured MongoDB connection and real database persistence have been verified using an isolated temporary test database, covering research leases, failure recovery, alert deduplication, account ownership, and concurrent budget reservations. Live Anthropic discovery and conversational follow-up, real account/save/watch persistence, and scheduled research generating a private in-app alert were exercised on 13 September 2026. A final live Valencia research call saved its official registration table and runner profile into MongoDB. Temporary test accounts and their personal records were removed. Demo and injected unit-test responses remain separate from these live checks.
+
+Long research requests use streaming, a five-minute timeout per model request, and no automatic transport retries. Structured extraction has one bounded correction attempt. Full official pages are fetched and passed to extraction, unknown dates stay unknown, and sub-three-hour statistics are excluded from Boston-qualifier percentages. Source accuracy is still bounded by what the organiser publishes; missing and conflicting values must be reviewed as such.
 
 ```sh
 npm run build --prefix client
@@ -55,4 +57,16 @@ Photo attribution and license links are shown on race details; metadata is in `c
 
 See `DEPLOYMENT.md` for the existing deployment plan. This prototype has not been deployed.
 
-Research preserves citation URLs for extraction and rejects confirmed dates without a date and source URL. The existing basic web-search tool is retained with a maximum of five searches per research step; see [Anthropic web search documentation](https://platform.claude.com/docs/en/agents-and-tools/tool-use/web-search-tool). Each check includes a separate structured extraction call.
+Research preserves citation URLs for extraction and rejects confirmed dates without a date and source URL. Research uses up to five web searches and three fetches restricted to the race organiser’s domain per check; see [Anthropic web search documentation](https://platform.claude.com/docs/en/agents-and-tools/tool-use/web-search-tool). Each check includes a separate structured extraction call.
+
+## Live end-to-end check
+
+This test uses the configured live database and AI account. It creates a temporary account, saves and watches an unresearched catalog race, runs discovery and a follow-up, waits for the scheduler’s research alert, marks it read, and removes the temporary account. Real shared race research is retained. The local API must have `MONITORING_ENABLED=true` and the client must be running. Set `PLAYWRIGHT_MODULE` if Playwright is not installed in the default module path.
+
+```sh
+RUN_LIVE_E2E=1 node tests/live-e2e.cjs
+# Verify only the scheduled research/alert path, without paid discovery calls:
+RUN_LIVE_E2E=1 LIVE_SKIP_DISCOVERY=1 node tests/live-e2e.cjs
+```
+
+Discovery allows ten requests per visitor per hour by default, while retaining the existing global daily cap of twenty. The monitor’s current heartbeat is available at `/api/monitoring`; personal alerts are authenticated. The local installation has monitoring enabled, but no cloud hosting or email delivery has been configured.

@@ -28,6 +28,8 @@ export function validateResearch(result) {
         (!/^\d{4}-\d{2}-\d{2}$/.test(event.date) || !validDate(event.date)))
     )
       throw new Error("Research returned an invalid registration event.");
+    // An event may be known to exist while its date is not known.
+    if (!event.date) event.dateConfidence = "unknown";
     if (
       event.dateConfidence === "confirmed" &&
       (!event.date || !safeHttpUrl(event.sourceUrl))
@@ -49,10 +51,15 @@ export function validateResearch(result) {
       throw new Error(
         "Research facts require a supported category and source URL.",
       );
+  result.profileFacts = (result.profileFacts || []).filter(
+    (fact) =>
+      fact.key !== "bq" ||
+      !/\bsub[-\s]?3\b|\bunder (?:3|three) hours\b/i.test(fact.value),
+  );
   return result;
 }
 export function researchText(response) {
-  return response.content
+  const notes = response.content
     .filter((b) => b.type === "text")
     .map((b) => {
       const sources = (b.citations || [])
@@ -62,4 +69,19 @@ export function researchText(response) {
     })
     .join("\n")
     .trim();
+  const pages = response.content
+    .filter(
+      (block) =>
+        block.type === "web_fetch_tool_result" &&
+        block.content?.type === "web_fetch_result",
+    )
+    .map((block) => {
+      const page = block.content;
+      const data = page.content?.source?.data;
+      return safeHttpUrl(page.url) && typeof data === "string"
+        ? `Fetched official source: ${page.url}\n${data.slice(0, 18000)}`
+        : "";
+    })
+    .filter(Boolean);
+  return [notes, ...pages].join("\n\n");
 }

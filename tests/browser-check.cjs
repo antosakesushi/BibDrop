@@ -152,7 +152,20 @@ const assert = require("node:assert/strict");
       body: JSON.stringify(body),
     });
   });
-  await live.goto("http://127.0.0.1:5173/discover");
+  await live.addInitScript(() => {
+    if (!sessionStorage.getItem("mode-seeded")) {
+      localStorage.setItem("bibdrop-demo", "true");
+      sessionStorage.setItem("mode-seeded", "true");
+    }
+  });
+  await live.goto("http://127.0.0.1:5173/discover?demo=0");
+  await live
+    .getByRole("heading", { name: "Where do you want to run?" })
+    .waitFor();
+  assert.equal(
+    await live.evaluate(() => localStorage.getItem("bibdrop-demo")),
+    "false",
+  );
   await live
     .getByRole("button", { name: "Watch registration", exact: true })
     .click();

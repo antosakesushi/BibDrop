@@ -1,3 +1,6 @@
+import { findExistingRace } from "../lib/raceIdentity.js";
+import { optionalAuth } from "../middleware/auth.js";
+import { attachInterestStage } from "./races.js";
 import { Router } from "express";
 import { Race } from "../models/Race.js";
 import { DiscoveryLog } from "../models/DiscoveryLog.js";
@@ -6,8 +9,6 @@ import { validateDiscoveryInput, safeHttpUrl } from "../lib/discoveryInput.js";
 import { discoveryRateLimiter } from "../middleware/discoveryRateLimiter.js";
 
 export const discoverRouter = Router();
-
-const MAX_CRITERIA_LENGTH = 600;
 
 function slugify(name) {
   return name
@@ -32,6 +33,11 @@ discoverRouter.post("/", discoveryRateLimiter, async (req, res, next) => {
       criteria.trim(),
       req.body.messages || [],
     );
+    const catalog = await Race.find().select("slug name officialUrl");
+    result.candidates = result.candidates.map((candidate) => {
+      const existing = findExistingRace(catalog, candidate);
+      return existing ? { ...candidate, slug: existing.slug } : candidate;
+    });
     const candidates = result.candidates;
     await DiscoveryLog.create({
       requesterIp: ip,
@@ -55,7 +61,7 @@ discoverRouter.post("/", discoveryRateLimiter, async (req, res, next) => {
 // registry. This is deliberately not part of the discovery call itself -
 // nothing is persisted until a human explicitly confirms a specific
 // candidate.
-discoverRouter.post("/confirm", async (req, res, next) => {
+discoverRouter.post("/confirm", optionalAuth, async (req, res, next) => {
   try {
     const { name, officialUrl, city, country, courseType, season, tags } =
       req.body;
@@ -72,9 +78,9 @@ discoverRouter.post("/confirm", async (req, res, next) => {
     }
 
     const slug = slugify(name);
-    const existing = await Race.findOne({ slug });
+    const existing = findExistingRace(await Race.find(), { name, officialUrl });
     if (existing) {
-      return res.json(existing);
+      return res.json((await attachInterestStage([existing], req.userId))[0]);
     }
 
     const race = await Race.create({

@@ -1,3 +1,4 @@
+import { getMonitorStatus } from "./jobs/monitor.js";
 import express from "express";
 import cors from "cors";
 import cookieParser from "cookie-parser";
@@ -24,15 +25,7 @@ app.use(cookieParser());
 app.set("trust proxy", 1);
 
 app.get("/api/health", (req, res) => res.json({ ok: true }));
-app.get("/api/monitoring", (req, res) =>
-  res.json({
-    enabled: process.env.MONITORING_ENABLED === "true",
-    channel: "in_app",
-    baselineDays: 7,
-    nearWindowDays: 1,
-    emailEnabled: false,
-  }),
-);
+app.get("/api/monitoring", (req, res) => res.json(getMonitorStatus()));
 app.use("/api/notifications", notificationsRouter);
 app.use("/api/auth", authRouter);
 app.use("/api/races", racesRouter);

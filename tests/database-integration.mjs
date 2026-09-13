@@ -132,6 +132,23 @@ try {
     ).status,
     200,
   );
+  const confirm = await fetch(base + "/discover/confirm", {
+    method: "POST",
+    headers: { ...headers, "Content-Type": "application/json" },
+    body: JSON.stringify({
+      name: "Sponsor Test Marathon",
+      officialUrl: "https://example.org/en/",
+    }),
+  });
+  assert.equal(confirm.status, 200);
+  const confirmed = await confirm.json();
+  assert.equal(confirmed.slug, "test");
+  assert.equal(confirmed.interestStage, "watching");
+  assert.equal(
+    await Race.countDocuments(),
+    1,
+    "Sponsor names must reuse the catalog record",
+  );
   process.env.RESEARCH_DAILY_BUDGET_CAP = "5";
   const attempts = await Promise.allSettled(
     Array.from({ length: 8 }, () => reserveResearchBudget()),
