@@ -2,7 +2,7 @@
 
 A planning agent for marathon runners. Registration for popular races is scattered across dozens of sites, opens at different times, and often runs through lotteries or waitlists that are easy to miss. BibDrop points an agent at a race's official site and asks it to figure out where registration currently stands — lottery windows, general entry, price tiers — and report back with sources and a confidence level, rather than a human tracking it all by hand.
 
-Work in progress. Currently a local MVP: real agent, real database, async research jobs, no public deployment yet.
+Work in progress. Local MVP plus invite-only **soft-launch scaffolding** (Goals home, watching `.ics` feed, register gate). Not a public product until hosting and secrets are connected — see `DEPLOYMENT.md`.
 
 ## How it works
 
@@ -23,8 +23,10 @@ bibdrop/
 - `server/src/routes/research.js` — `POST /api/research/:slug` (auth, rate/budget, registry-only, **202** `{ snapshotId, status }`) and `GET /api/research/jobs/:snapshotId` (poll).
 - `server/src/models/ResearchSnapshot.js` — append-only history of each run (`queued|running|succeeded|failed`).
 - `server/src/worker.js` — BullMQ worker. Research jobs, hourly alert scanner, 6h refresh of races with ≥1 watcher.
-- `server/src/models/Goal.js` — per-user goal stub (label, race tags, optional constraints). Does not spend Claude credits.
+- `server/src/models/Goal.js` — per-user goal (label, race tags, optional constraints). Does not spend Claude credits.
+- `server/src/services/goalHome.js` — tag-overlap ranking of watching/interested races plus curated fallbacks when a pathway looks blocked.
 - `server/src/models/Deadline.js` / `Alert.js` — current registration deadlines from the latest succeeded snapshot; watching-only email alert rows (14/7/1 day).
+- `server/src/routes/calendar.js` — signed-token `.ics` of watching deadlines.
 - `server/src/seed/races.seed.js` — populates the race registry (identity only).
 
 ## Guardrails
@@ -69,18 +71,24 @@ If Redis is missing, `POST /api/research/:slug` returns **503** with a clear err
 
 Succeeded snapshots for a race are reused for `RESEARCH_SNAPSHOT_TTL_HOURS` (default 12) instead of spending Claude again.
 
-A **Goals** stub (`/goals`) lets a signed-in runner create/list/archive a goal (BQ / World Major / destination tags, optional season/region/course). Creating a goal does not run research. The home page is still the race catalog — a Goals-first “what do I do next?” home is forthcoming.
+**Home = Goals.** `/` (and `/goals`) is the post-login home: each active goal shows matched watching/interested races (tag overlap), the nearest dated deadline if any, and at least three curated-registry fallbacks when that pathway looks blocked. The catalog lives at `/races`; Discover is linked from there.
+
+Creating a goal does not run research or spend Claude credits. BibDrop does not register, enter lotteries, or take payment — official race-site CTAs stay primary.
 
 **Watching → alerts:** marking a race as watching materializes `Deadline` rows from the latest succeeded snapshot and upserts idempotent `Alert` rows (email, 14/7/1 days before). Dates that are null or `unknown` are never scheduled. The worker scans due alerts hourly. Set `RESEND_API_KEY` (preferred) or `SENDGRID_API_KEY` to actually send; without a key the scanner logs and leaves rows `scheduled`.
 
+**Calendar:** Settings → show subscribe URL. Google Calendar: Other calendars → + → From URL. Apple Calendar: File → New Calendar Subscription. The feed is a signed token (`purpose=ics`); watching races only.
+
+**Invite gate:** set `INVITE_CODES` and/or `SOFT_LAUNCH=true`. Sign-up requires a valid code when the gate is on. Admin emails in `ADMIN_EMAILS` see 24h research spend on Settings.
+
 ## Deployment
 
-Not live yet. `DEPLOYMENT.md` has a plan for Vercel (frontend) + Render (web API **and** background worker) + MongoDB Atlas + Redis once it's ready to go public.
+Not live yet. Ready for **staging** once you connect Atlas, Redis, Render (web + worker), Vercel, and the secrets in the `DEPLOYMENT.md` checklist. That file also covers `ALLOWED_ORIGINS`, Secure cookies, Vercel `/api` rewrites vs `VITE_API_BASE`, and invite codes.
 
 ## Not built yet
 
-- Goals-first home (the Goal entity exists as a stub; dashboard is still race-catalog first).
-- Pathway / match ranking that uses Goal tags against researched races.
-- .ics calendar feed and push/SMS channels.
-- Invite-only hosted-pilot wall / WTP instrumentation.
+- WTP payment checkout / native apps / Discord.
+- Push/SMS alert channels (email + `.ics` only).
 - Multi-source cross-verification beyond one research pass per snapshot.
+- Full contested-info workflow (race pages have a mailto “Report wrong info” stub).
+- Provisioning of host accounts or secrets (human step).

@@ -62,7 +62,7 @@ export function Alerts() {
         <p style={{ color: "var(--text-secondary)" }}>Loading your alerts…</p>
       ) : scheduled.length === 0 && alerts.length === 0 ? (
         <p style={{ color: "var(--text-secondary)", fontSize: 13 }}>
-          No alerts yet. Research a race, then choose <strong>Watch for deadlines</strong>.
+          No alerts yet. Nothing urgent — watch a race after you research it to schedule emails.
         </p>
       ) : (
         BANDS.map((band) => {

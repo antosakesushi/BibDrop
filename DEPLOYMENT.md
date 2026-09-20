@@ -3,6 +3,39 @@
 This is a suggested path, not the only option — verify current pricing and
 steps against each provider's docs, since free tiers and UIs change.
 
+**Honest status:** the app is ready for a **staging** hosted-pilot once
+accounts and secrets exist. This repo does not provision Atlas / Redis /
+Render / Vercel or paste keys. Merge the stacked PRs, seed the registry,
+and hand out invite codes before any real runners log in.
+
+## Go-live checklist
+
+Accounts (human): MongoDB Atlas, Redis (Render Key Value), Render **web**
++ **worker**, Vercel project.
+
+Env on **both** Render services (web + worker unless noted):
+
+- [ ] `MONGODB_URI` — Atlas, Network Access open to Render
+- [ ] `REDIS_URL` — same instance on web and worker
+- [ ] `JWT_SECRET` — long random string, same on web and worker
+- [ ] `ANTHROPIC_API_KEY`
+- [ ] `RESEND_API_KEY` (preferred) or `SENDGRID_API_KEY` + `ALERT_FROM_EMAIL`
+- [ ] `ALLOWED_ORIGINS` — exact Vercel origin (`https://….vercel.app`)
+- [ ] `INVITE_CODES` and/or `SOFT_LAUNCH=true` (invite wall on register)
+- [ ] `ADMIN_EMAILS` — spend dashboard on Settings
+- [ ] `RESEARCH_DAILY_BUDGET_CAP` / `DISCOVERY_DAILY_BUDGET_CAP` — numbers you can afford
+- [ ] `PUBLIC_API_URL` — public API origin for `.ics` subscribe links
+- [ ] `NODE_ENV=production` — turns **Secure** cookies on
+- [ ] Cookies: keep `COOKIE_SAMESITE=lax` if Vercel **rewrites** `/api` to Render
+      (same-site). Set `COOKIE_SAMESITE=none` only if the browser calls Render
+      **directly** from the Vercel origin (cross-site). `SameSite=None` requires
+      Secure (already forced).
+- [ ] Do **not** set `RESEARCH_SYNC_FALLBACK` in production
+- [ ] Replace `REPLACE_WITH_RENDER_HOST` in `client/vercel.json` **or** set
+      `VITE_API_BASE` (see below)
+- [ ] Run `npm run seed` once on the API after first deploy
+- [ ] Confirm worker process is running (jobs otherwise stay `queued`)
+
 ## 1. Database: MongoDB Atlas (free tier)
 
 1. Create a free cluster at mongodb.com/atlas.
@@ -29,21 +62,7 @@ a persistent process for cookies, Mongo, and Redis.
 
 1. New **Web Service** → point at `server/` as the root directory.
 2. Build command: `npm install`. Start command: `npm start`.
-3. Set environment variables from `server/.env.example`:
-   - `MONGODB_URI` (from Atlas)
-   - `REDIS_URL` (from the Redis instance)
-   - `JWT_SECRET` (long random string)
-   - `ANTHROPIC_API_KEY`
-   - `ALLOWED_ORIGINS` — set this to your deployed frontend URL once you
-     have it (step 5), or the API will reject cross-origin requests.
-   - `RESEARCH_RATE_LIMIT_PER_IP_PER_HOUR` and `RESEARCH_DAILY_BUDGET_CAP`
-     — tune these to a budget you're comfortable with before going public.
-   - `RESEARCH_SNAPSHOT_TTL_HOURS` — default 12; reuse a fresh snapshot
-     instead of spending Claude.
-   - `RESEND_API_KEY` (preferred) or `SENDGRID_API_KEY` — email delivery for
-     watching-race alerts. Optional: without a key, `Alert` rows still
-     schedule and the worker no-ops send with a log line.
-   - `ALERT_FROM_EMAIL` — verified from-address for Resend/SendGrid.
+3. Set environment variables from `server/.env.example` (checklist above).
 4. Do **not** set `RESEARCH_SYNC_FALLBACK` on Render.
 5. After first deploy, run the seed script once (Render's shell tab, or a
    one-off job): `npm run seed`.
@@ -67,23 +86,44 @@ poll times out). The web service should still 202 as long as Redis is up.
 
 1. New Project → point at `client/` as the root directory. Vercel
    auto-detects Vite.
-2. The client calls `/api/...` relative paths locally (via the Vite proxy),
-   but in production it needs to hit your Render API's real URL. Either:
-   - Add a Vercel rewrite in `client/vercel.json` forwarding `/api/*` to
-     your Render URL, or
-   - Change `client/src/api.js`'s `BASE` constant to your full Render API
-     URL.
-3. Once deployed, go back to Render and set `ALLOWED_ORIGINS` to this
-   Vercel URL, then redeploy the API.
+2. **Preferred (same-site cookies, SameSite=Lax):** edit
+   `client/vercel.json` so `/api/:path*` rewrites to your Render host, e.g.
+   `https://bibdrop-api.onrender.com/api/:path*`. Leave `VITE_API_BASE` unset
+   so the browser keeps calling relative `/api`.
+3. **Split domains:** set `VITE_API_BASE=https://your-api.onrender.com/api`
+   on Vercel, set Render `ALLOWED_ORIGINS` to the Vercel origin, and set
+   `COOKIE_SAMESITE=none` (Secure is on in production).
+4. Once deployed, set `ALLOWED_ORIGINS` on Render to this Vercel URL and
+   redeploy the API.
 
-## Before sharing the link publicly
+## Invite-only register
+
+Set `INVITE_CODES=code1,code2` and/or `SOFT_LAUNCH=true`. The sign-up form
+shows an invite field when `GET /api/auth/config` reports `inviteRequired`.
+`SOFT_LAUNCH=true` with an empty code list rejects every new account.
+
+Existing accounts can still log in. This is not a full waitlist product.
+
+## Spend observability
+
+Emails in `ADMIN_EMAILS` see last-24h research log counts vs
+`RESEARCH_DAILY_BUDGET_CAP`, snapshot status totals, and token sums on
+Settings (`GET /api/admin/research-spend`). Non-admins get 403.
+
+## Calendar feed
+
+Signed `purpose=ics` token (calendar clients cannot send cookies).
+Watching races only; null/unknown dates omitted. Google/Apple steps are
+on Settings after “Show subscribe URL”. Set `PUBLIC_API_URL` so those
+links stay on the public API host.
+
+## Before sharing the link with pilots
 
 - Re-read the Guardrails section in the main README.
 - Set `RESEARCH_DAILY_BUDGET_CAP` to something you're genuinely fine
   paying for if it gets maxed out every day.
 - Confirm both the web service **and** the background worker are running,
   and that `REDIS_URL` is set on both.
-- Consider whether you want the research button live-callable by anyone
-  with an account, or gated to a small hosted-pilot group — a public
-  GitHub repo with a public demo link is far more discoverable than most
-  people expect.
+- Confirm invite codes are set and you have a short list of pilot emails.
+- Merge the stacked feature PRs into the branch you actually deploy
+  (do not assume `main` is current).

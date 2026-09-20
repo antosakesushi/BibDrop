@@ -1,4 +1,4 @@
-const BASE = "/api";
+const BASE = (import.meta.env.VITE_API_BASE || "/api").replace(/\/$/, "");
 
 async function handle(res) {
   if (!res.ok) {
@@ -45,12 +45,13 @@ export const api = {
       body: JSON.stringify(candidate),
     }).then(handle),
 
-  register: (email, password) =>
+  authConfig: () => fetch(`${BASE}/auth/config`, { credentials: "include" }).then(handle),
+  register: (email, password, inviteCode) =>
     fetch(`${BASE}/auth/register`, {
       method: "POST",
       credentials: "include",
       headers: jsonHeaders,
-      body: JSON.stringify({ email, password }),
+      body: JSON.stringify({ email, password, inviteCode }),
     }).then(handle),
   login: (email, password) =>
     fetch(`${BASE}/auth/login`, {
@@ -63,6 +64,7 @@ export const api = {
   me: () => fetch(`${BASE}/auth/me`, { credentials: "include" }).then(handle),
 
   listGoals: () => fetch(`${BASE}/goals`, { credentials: "include" }).then(handle),
+  getGoalHome: () => fetch(`${BASE}/goals/home`, { credentials: "include" }).then(handle),
   createGoal: (goal) =>
     fetch(`${BASE}/goals`, {
       method: "POST",
@@ -84,4 +86,6 @@ export const api = {
     const q = raceSlug ? `?raceSlug=${encodeURIComponent(raceSlug)}` : "";
     return fetch(`${BASE}/deadlines${q}`, { credentials: "include" }).then(handle);
   },
+  calendarFeedUrl: () => fetch(`${BASE}/calendar/feed-url`, { credentials: "include" }).then(handle),
+  researchSpend: () => fetch(`${BASE}/admin/research-spend`, { credentials: "include" }).then(handle),
 };
