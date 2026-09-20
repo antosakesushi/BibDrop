@@ -21,6 +21,8 @@ export const api = {
   getRace: (slug) => fetch(`${BASE}/races/${slug}`, { credentials: "include" }).then(handle),
   researchRace: (slug) =>
     fetch(`${BASE}/research/${slug}`, { method: "POST", credentials: "include" }).then(handle),
+  getResearchJob: (snapshotId) =>
+    fetch(`${BASE}/research/jobs/${snapshotId}`, { credentials: "include" }).then(handle),
   setInterestStage: (slug, stage) =>
     fetch(`${BASE}/races/${slug}/interest`, {
       method: "PATCH",

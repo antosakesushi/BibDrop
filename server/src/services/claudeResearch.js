@@ -10,7 +10,7 @@ const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 // and a model string like "claude-sonnet-4-6". Check docs.claude.com.
 const MODEL = process.env.ANTHROPIC_MODEL || "claude-sonnet-4-6";
 
-const EVENT_TYPES = [
+export const EVENT_TYPES = [
   "lottery_open",
   "lottery_close",
   "lottery_results",
@@ -145,5 +145,46 @@ Research this race's current registration timeline.`;
     throw new Error("Extraction step did not return the expected tool call - check the API response shape against current docs.");
   }
 
-  return toolUseBlock.input;
+  return {
+    ...toolUseBlock.input,
+    sources: extractSources(researchResponse),
+    model: MODEL,
+    usage: sumUsage(researchResponse, extractionResponse),
+  };
+}
+
+function extractSources(researchResponse) {
+  const sources = [];
+  const seen = new Set();
+
+  function add(url, title) {
+    if (!url || seen.has(url)) return;
+    seen.add(url);
+    sources.push({ url, title: title || "" });
+  }
+
+  for (const block of researchResponse.content || []) {
+    if (block.type === "web_search_tool_result" && Array.isArray(block.content)) {
+      for (const item of block.content) {
+        add(item.url, item.title);
+      }
+    }
+    if (Array.isArray(block.citations)) {
+      for (const citation of block.citations) {
+        add(citation.url, citation.title);
+      }
+    }
+  }
+
+  return sources;
+}
+
+function sumUsage(...responses) {
+  let inputTokens = 0;
+  let outputTokens = 0;
+  for (const response of responses) {
+    inputTokens += response.usage?.input_tokens || 0;
+    outputTokens += response.usage?.output_tokens || 0;
+  }
+  return { inputTokens, outputTokens };
 }

@@ -22,7 +22,13 @@ app.use(cookieParser());
 // visitor IP, not the proxy's - important for the rate limiter to work.
 app.set("trust proxy", 1);
 
-app.get("/api/health", (req, res) => res.json({ ok: true }));
+app.get("/api/health", (req, res) =>
+  res.json({
+    ok: true,
+    redisConfigured: Boolean(process.env.REDIS_URL),
+    researchSyncFallback: process.env.RESEARCH_SYNC_FALLBACK === "true",
+  })
+);
 app.use("/api/auth", authRouter);
 app.use("/api/races", racesRouter);
 app.use("/api/research", researchRouter);
@@ -31,6 +37,9 @@ app.use("/api/discover", discoverRouter);
 // Basic error handler - last middleware
 app.use((err, req, res, next) => {
   console.error(err);
+  if (err.statusCode) {
+    return res.status(err.statusCode).json({ error: err.message });
+  }
   res.status(500).json({ error: "Something went wrong. Check server logs." });
 });
 

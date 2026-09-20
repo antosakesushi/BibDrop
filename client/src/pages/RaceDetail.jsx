@@ -21,26 +21,60 @@ export function RaceDetail() {
   const { slug } = useParams();
   const { user } = useAuth();
   const [race, setRace] = useState(null);
+  const [snapshot, setSnapshot] = useState(null);
   const [error, setError] = useState(null);
   const [researching, setResearching] = useState(false);
+  const [jobStatus, setJobStatus] = useState(null);
   const [updatingStage, setUpdatingStage] = useState(false);
 
   function load() {
     api.getRace(slug).then(setRace).catch((e) => setError(e.message));
   }
 
-  useEffect(load, [slug]);
+  useEffect(() => {
+    setSnapshot(null);
+    setError(null);
+    setJobStatus(null);
+    load();
+  }, [slug]);
+
+  async function pollJob(snapshotId) {
+    const timeoutAt = Date.now() + 4 * 60 * 1000;
+    let delay = 1200;
+    while (Date.now() < timeoutAt) {
+      const job = await api.getResearchJob(snapshotId);
+      setJobStatus(job.status);
+      setSnapshot(job);
+      if (job.status === "succeeded" || job.status === "failed") return job;
+      await new Promise((r) => setTimeout(r, delay));
+      delay = Math.min(delay + 400, 3000);
+    }
+    throw new Error("Research is taking longer than expected. Refresh this page to check status.");
+  }
 
   async function handleResearch() {
+    if (!user) {
+      setError("Log in to research this race.");
+      return;
+    }
     setResearching(true);
     setError(null);
+    setJobStatus("queued");
     try {
-      const updated = await api.researchRace(slug);
+      const accepted = await api.researchRace(slug);
+      setJobStatus(accepted.status);
+      const job = await pollJob(accepted.snapshotId);
+      if (job.status === "failed") {
+        throw new Error(job.errorMessage || "Research failed.");
+      }
+      const updated = await api.getRace(slug);
       setRace(updated);
+      setSnapshot(job);
     } catch (e) {
       setError(e.message);
     } finally {
       setResearching(false);
+      setJobStatus(null);
     }
   }
 
@@ -59,6 +93,23 @@ export function RaceDetail() {
 
   if (!race) return <div style={{ padding: 24, color: "var(--text-secondary)" }}>Loading…</div>;
 
+  const fromSnapshot = snapshot?.status === "succeeded" ? snapshot : null;
+  const confidence = fromSnapshot?.confidence || race.lastResearchConfidence;
+  const summary = fromSnapshot?.agentSummary || race.agentSummary;
+  const events = fromSnapshot?.registrationEvents?.length
+    ? fromSnapshot.registrationEvents
+    : race.registrationEvents;
+  const snippets = fromSnapshot?.sourceSnippets?.length
+    ? fromSnapshot.sourceSnippets
+    : race.researchSourceSnippets;
+  const sources = fromSnapshot?.sources || [];
+
+  function researchButtonLabel() {
+    if (!researching) return "Research this race";
+    if (jobStatus === "queued") return "Queued…";
+    return "Agent is researching…";
+  }
+
   return (
     <div style={{ padding: "24px 32px", maxWidth: 800, margin: "0 auto" }}>
       <Link to="/" style={{ color: "var(--text-secondary)", fontSize: 13 }}>&larr; Back to dashboard</Link>
@@ -69,14 +120,19 @@ export function RaceDetail() {
       </p>
 
       <div style={{ margin: "16px 0", display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
-        <ConfidenceTag confidence={race.lastResearchConfidence} />
+        <ConfidenceTag confidence={confidence} />
         <InterestIndicator stage={race.interestStage} />
       </div>
 
       <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
-        <button className="btn-primary" onClick={handleResearch} disabled={researching}>
-          {researching ? "Agent is researching…" : "Research this race"}
+        <button className="btn-primary" onClick={handleResearch} disabled={researching || !user}>
+          {researchButtonLabel()}
         </button>
+        {!user && (
+          <span style={{ color: "var(--text-secondary)", fontSize: 13 }}>
+            <Link to="/login" style={{ color: "var(--accent-primary)" }}>Log in</Link> to research this race and save the ones you're interested in.
+          </span>
+        )}
 
         {race.lastResearchConfidence !== "not_yet_researched" && user && (
           <>
@@ -101,28 +157,23 @@ export function RaceDetail() {
             )}
           </>
         )}
-        {race.lastResearchConfidence !== "not_yet_researched" && !user && (
-          <span style={{ color: "var(--text-secondary)", fontSize: 13 }}>
-            <Link to="/login" style={{ color: "var(--accent-primary)" }}>Log in</Link> to save races you're interested in.
-          </span>
-        )}
       </div>
       {error && <p style={{ color: "var(--status-urgent)" }}>{error}</p>}
 
-      {race.agentSummary && (
+      {summary && (
         <div className="card" style={{ marginTop: 24 }}>
           <div style={{ fontSize: 12, letterSpacing: "0.05em", color: "var(--text-secondary)" }}>
             BIBDROP AI AGENT
           </div>
-          <p style={{ marginTop: 8 }}>{race.agentSummary}</p>
+          <p style={{ marginTop: 8 }}>{summary}</p>
         </div>
       )}
 
-      {race.registrationEvents?.length > 0 && (
+      {events?.length > 0 && (
         <div style={{ marginTop: 24 }}>
           <h2 style={{ fontSize: 16 }}>Registration timeline</h2>
           <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-            {race.registrationEvents.map((e, i) => (
+            {events.map((e, i) => (
               <div key={i} className="card" style={{ display: "flex", justifyContent: "space-between" }}>
                 <div>
                   <div style={{ fontWeight: 600 }}>{EVENT_TYPE_LABEL[e.type] || e.label}</div>
@@ -138,14 +189,27 @@ export function RaceDetail() {
         </div>
       )}
 
-      {race.researchSourceSnippets?.length > 0 && (
+      {(sources.length > 0 || snippets?.length > 0) && (
         <div style={{ marginTop: 24 }}>
           <h2 style={{ fontSize: 16 }}>Agent's sources</h2>
-          <ul style={{ color: "var(--text-secondary)", fontSize: 13 }}>
-            {race.researchSourceSnippets.map((s, i) => (
-              <li key={i}>{s}</li>
-            ))}
-          </ul>
+          {sources.length > 0 && (
+            <ul style={{ fontSize: 13, marginBottom: snippets?.length ? 12 : 0 }}>
+              {sources.map((s) => (
+                <li key={s.url}>
+                  <a href={s.url} target="_blank" rel="noreferrer" style={{ color: "var(--accent-primary)" }}>
+                    {s.title || s.url}
+                  </a>
+                </li>
+              ))}
+            </ul>
+          )}
+          {snippets?.length > 0 && (
+            <ul style={{ color: "var(--text-secondary)", fontSize: 13 }}>
+              {snippets.map((s, i) => (
+                <li key={i}>{s}</li>
+              ))}
+            </ul>
+          )}
         </div>
       )}
 
