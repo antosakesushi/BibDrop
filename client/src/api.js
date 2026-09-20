@@ -1,4 +1,4 @@
-const BASE = "/api";
+const BASE = (import.meta.env.VITE_API_BASE || "/api").replace(/\/$/, "");
 
 async function handle(res) {
   if (!res.ok) {
@@ -45,12 +45,13 @@ export const api = {
       body: JSON.stringify(candidate),
     }).then(handle),
 
-  register: (email, password) =>
+  authConfig: () => fetch(`${BASE}/auth/config`, { credentials: "include" }).then(handle),
+  register: (email, password, inviteCode) =>
     fetch(`${BASE}/auth/register`, {
       method: "POST",
       credentials: "include",
       headers: jsonHeaders,
-      body: JSON.stringify({ email, password }),
+      body: JSON.stringify({ email, password, inviteCode }),
     }).then(handle),
   login: (email, password) =>
     fetch(`${BASE}/auth/login`, {
@@ -61,4 +62,30 @@ export const api = {
     }).then(handle),
   logout: () => fetch(`${BASE}/auth/logout`, { method: "POST", credentials: "include" }).then(handle),
   me: () => fetch(`${BASE}/auth/me`, { credentials: "include" }).then(handle),
+
+  listGoals: () => fetch(`${BASE}/goals`, { credentials: "include" }).then(handle),
+  getGoalHome: () => fetch(`${BASE}/goals/home`, { credentials: "include" }).then(handle),
+  createGoal: (goal) =>
+    fetch(`${BASE}/goals`, {
+      method: "POST",
+      credentials: "include",
+      headers: jsonHeaders,
+      body: JSON.stringify(goal),
+    }).then(handle),
+  updateGoal: (id, patch) =>
+    fetch(`${BASE}/goals/${id}`, {
+      method: "PATCH",
+      credentials: "include",
+      headers: jsonHeaders,
+      body: JSON.stringify(patch),
+    }).then(handle),
+  archiveGoal: (id) =>
+    fetch(`${BASE}/goals/${id}`, { method: "DELETE", credentials: "include" }).then(handle),
+  listAlerts: () => fetch(`${BASE}/alerts`, { credentials: "include" }).then(handle),
+  listDeadlines: (raceSlug) => {
+    const q = raceSlug ? `?raceSlug=${encodeURIComponent(raceSlug)}` : "";
+    return fetch(`${BASE}/deadlines${q}`, { credentials: "include" }).then(handle);
+  },
+  calendarFeedUrl: () => fetch(`${BASE}/calendar/feed-url`, { credentials: "include" }).then(handle),
+  researchSpend: () => fetch(`${BASE}/admin/research-spend`, { credentials: "include" }).then(handle),
 };

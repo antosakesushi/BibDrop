@@ -32,7 +32,7 @@ function daysUntil(dateStr) {
   return Math.round(diffMs / (1000 * 60 * 60 * 24));
 }
 
-export function DeadlinesCalendar() {
+export function DeadlinesCalendar({ embedded = false }) {
   const [races, setRaces] = useState(null);
 
   useEffect(() => {
@@ -67,9 +67,20 @@ export function DeadlinesCalendar() {
     events: allEvents.filter((e) => e.type === type),
   })).filter((g) => g.events.length > 0);
 
+  const heading = embedded ? (
+    <h2 style={{ fontSize: 18, marginTop: 40 }}>All researched deadlines</h2>
+  ) : (
+    <>
+      <h1 style={{ marginBottom: 4 }}>Deadlines</h1>
+      <p style={{ color: "var(--text-secondary)", marginTop: 0 }}>
+        Calendar of dated registration events from researched races. Watch a race to schedule email alerts.
+      </p>
+    </>
+  );
+
   return (
-    <div style={{ padding: "24px 32px", maxWidth: 800, margin: "0 auto" }}>
-      <h1>Deadlines</h1>
+    <div style={{ padding: embedded ? 0 : "24px 32px", maxWidth: 800, margin: embedded ? 0 : "0 auto" }}>
+      {heading}
 
       {allEvents.length === 0 && (
         <p style={{ color: "var(--text-secondary)" }}>
@@ -97,7 +108,7 @@ export function DeadlinesCalendar() {
                     </div>
                     <div style={{ color: "var(--text-secondary)", fontSize: 13 }}>{e.label}</div>
                     <div style={{ fontSize: 12, marginTop: 4, color: urgent ? "var(--status-urgent)" : "var(--text-secondary)" }}>
-                      {new Date(e.date).toLocaleDateString()} · {days === 0 ? "today" : `${days} day${days === 1 ? "" : "s"} left`}
+                      {new Date(e.date).toLocaleDateString()} · {e.dateConfidence || "unknown"} · {days === 0 ? "today" : `${days} day${days === 1 ? "" : "s"} left`}
                     </div>
                   </div>
                   <a href={e.officialUrl} target="_blank" rel="noreferrer" className="btn-primary" style={{ textDecoration: "none", whiteSpace: "nowrap", fontSize: 13 }}>

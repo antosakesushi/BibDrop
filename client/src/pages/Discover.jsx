@@ -53,7 +53,8 @@ export function Discover() {
 
   return (
     <div style={{ padding: "24px 32px", maxWidth: 800, margin: "0 auto" }}>
-      <h1>Discover races</h1>
+      <Link to="/races" style={{ color: "var(--text-secondary)", fontSize: 13 }}>&larr; Races</Link>
+      <h1 style={{ marginTop: 8 }}>Discover races</h1>
       <p style={{ color: "var(--text-secondary)" }}>
         Describe what you're looking for in plain language - the agent searches for real races matching it.
         Example: "flat fast marathon in Europe in spring" or "small destination race in Southeast Asia."

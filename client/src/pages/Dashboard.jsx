@@ -43,10 +43,17 @@ export function Dashboard() {
 
   return (
     <div style={{ padding: "24px 32px", maxWidth: 1100, margin: "0 auto" }}>
-      <h1 style={{ marginBottom: 4 }}>Dashboard</h1>
-      <p style={{ color: "var(--text-secondary)", marginTop: 0 }}>
-        The runner's job is to train. The agent's job is everything else.
-      </p>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 16, flexWrap: "wrap" }}>
+        <div>
+          <h1 style={{ marginBottom: 4 }}>Races</h1>
+          <p style={{ color: "var(--text-secondary)", marginTop: 0 }}>
+            Curated catalog. Goals stay on the home page — this list is for browsing and watching.
+          </p>
+        </div>
+        <Link to="/discover" className="btn-secondary" style={{ textDecoration: "none", fontSize: 13 }}>
+          Discover
+        </Link>
+      </div>
 
       {GROUPS.map((group) => {
         const groupRaces = races.filter(group.filter);
@@ -71,7 +78,7 @@ export function Dashboard() {
                     <RaceCard key={r.slug} race={r} />
                   ))}
                   {groupRaces.length === 0 && (
-                    <p style={{ color: "var(--text-secondary)", fontSize: 13 }}>Nothing here yet.</p>
+                    <p style={{ color: "var(--text-secondary)", fontSize: 13 }}>Nothing in this list yet.</p>
                   )}
                 </>
               )}

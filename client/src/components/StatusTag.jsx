@@ -2,7 +2,7 @@ const VARIANT_BY_CONFIDENCE = {
   not_yet_researched: { label: "NOT YET RESEARCHED", className: "status-tag--following" },
   low: { label: "LOW CONFIDENCE", className: "status-tag--warning" },
   medium: { label: "MEDIUM CONFIDENCE", className: "status-tag--warning" },
-  high: { label: "AGENT VERIFIED", className: "status-tag--tracking" },
+  high: { label: "HIGH CONFIDENCE", className: "status-tag--tracking" },
 };
 
 export function ConfidenceTag({ confidence }) {

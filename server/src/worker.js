@@ -1,8 +1,9 @@
 import "dotenv/config";
+import mongoose from "mongoose";
 import { connectDB } from "./db.js";
 import { createResearchWorker, closeQueueConnections } from "./queue/researchQueue.js";
+import { createAlertsWorker, scheduleAlertJobs, closeAlertsQueue } from "./queue/alertsQueue.js";
 import { processSnapshot } from "./services/researchJobs.js";
-import mongoose from "mongoose";
 
 if (!process.env.REDIS_URL) {
   console.error(
@@ -11,12 +12,15 @@ if (!process.env.REDIS_URL) {
   process.exit(1);
 }
 
-let worker;
+let researchWorker;
+let alertsWorker;
 
 async function shutdown(signal) {
   console.log(`[worker] ${signal} received, shutting down`);
   try {
-    if (worker) await worker.close();
+    if (researchWorker) await researchWorker.close();
+    if (alertsWorker) await alertsWorker.close();
+    await closeAlertsQueue();
     await closeQueueConnections();
     await mongoose.disconnect();
   } catch (err) {
@@ -26,21 +30,34 @@ async function shutdown(signal) {
 }
 
 connectDB()
-  .then(() => {
-    worker = createResearchWorker(async ({ snapshotId, raceSlug }) => {
+  .then(async () => {
+    researchWorker = createResearchWorker(async ({ snapshotId, raceSlug }) => {
       try {
         await processSnapshot(snapshotId, raceSlug);
       } catch (err) {
-        // Snapshot is already marked failed inside processSnapshot when possible.
         console.error("[worker] research job failed:", err.message);
       }
     });
 
-    worker.on("ready", () => {
+    alertsWorker = createAlertsWorker();
+    alertsWorker.on("failed", (job, err) => {
+      console.error("[worker] alerts job failed", job?.name, err.message);
+    });
+
+    try {
+      await scheduleAlertJobs();
+    } catch (err) {
+      console.error("[worker] could not schedule repeatable alert jobs:", err.message);
+    }
+
+    researchWorker.on("ready", () => {
       console.log("[worker] BibDrop research worker listening for jobs");
     });
-    worker.on("failed", (job, err) => {
+    researchWorker.on("failed", (job, err) => {
       console.error("[worker] job failed", job?.id, err.message);
+    });
+    alertsWorker.on("ready", () => {
+      console.log("[worker] BibDrop alerts worker listening for jobs");
     });
 
     process.on("SIGTERM", () => shutdown("SIGTERM"));

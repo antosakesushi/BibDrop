@@ -1,21 +1,30 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { useAuth } from "../AuthContext.jsx";
+import { api } from "../api.js";
 
 export function Register() {
   const { register } = useAuth();
   const navigate = useNavigate();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [inviteCode, setInviteCode] = useState("");
+  const [inviteRequired, setInviteRequired] = useState(false);
   const [error, setError] = useState(null);
   const [submitting, setSubmitting] = useState(false);
+
+  useEffect(() => {
+    api.authConfig()
+      .then((cfg) => setInviteRequired(Boolean(cfg.inviteRequired)))
+      .catch(() => setInviteRequired(false));
+  }, []);
 
   async function handleSubmit(e) {
     e.preventDefault();
     setError(null);
     setSubmitting(true);
     try {
-      await register(email, password);
+      await register(email, password, inviteCode.trim() || undefined);
       navigate("/");
     } catch (err) {
       setError(err.message);
@@ -27,6 +36,11 @@ export function Register() {
   return (
     <div style={{ padding: "24px 32px", maxWidth: 360, margin: "60px auto" }}>
       <h1 style={{ fontSize: 22 }}>Sign up</h1>
+      {inviteRequired && (
+        <p style={{ color: "var(--text-secondary)", fontSize: 13 }}>
+          This hosted pilot needs an invite code.
+        </p>
+      )}
       <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: 12 }}>
         <input
           type="email"
@@ -43,6 +57,15 @@ export function Register() {
           onChange={(e) => setPassword(e.target.value)}
           required
           minLength={8}
+          style={inputStyle}
+        />
+        <input
+          type="text"
+          placeholder={inviteRequired ? "Invite code" : "Invite code (if you have one)"}
+          value={inviteCode}
+          onChange={(e) => setInviteCode(e.target.value)}
+          required={inviteRequired}
+          autoComplete="off"
           style={inputStyle}
         />
         {error && <p style={{ color: "var(--status-urgent)", fontSize: 13, margin: 0 }}>{error}</p>}
