@@ -23,6 +23,7 @@ bibdrop/
 - `server/src/routes/research.js` — `POST /api/research/:slug` (auth, rate/budget, registry-only, **202** `{ snapshotId, status }`) and `GET /api/research/jobs/:snapshotId` (poll).
 - `server/src/models/ResearchSnapshot.js` — append-only history of each run (`queued|running|succeeded|failed`).
 - `server/src/worker.js` — BullMQ worker. Accepts registry `raceSlug` / snapshot id only — never a client URL.
+- `server/src/models/Goal.js` — per-user goal stub (label, race tags, optional constraints). Does not spend Claude credits.
 - `server/src/seed/races.seed.js` — populates the race registry (identity only).
 
 ## Guardrails
@@ -67,13 +68,16 @@ If Redis is missing, `POST /api/research/:slug` returns **503** with a clear err
 
 Succeeded snapshots for a race are reused for `RESEARCH_SNAPSHOT_TTL_HOURS` (default 12) instead of spending Claude again.
 
+A **Goals** stub (`/goals`) lets a signed-in runner create/list/archive a goal (BQ / World Major / destination tags, optional season/region/course). Creating a goal does not run research. The home page is still the race catalog — a Goals-first “what do I do next?” home is forthcoming.
+
 ## Deployment
 
 Not live yet. `DEPLOYMENT.md` has a plan for Vercel (frontend) + Render (web API **and** background worker) + MongoDB Atlas + Redis once it's ready to go public.
 
 ## Not built yet
 
-- Goal entity / goals-first home (dashboard is still race-catalog first).
-- Deadline/Alert models, email, or .ics export.
+- Goals-first home (the Goal entity exists as a stub; dashboard is still race-catalog first).
+- Deadline/Alert models, email, or .ics export (Alerts in the nav currently opens the existing Deadlines calendar).
+- Pathway / match ranking that uses Goal tags against researched races.
 - Scheduled/background refresh for watching races (research is still on-demand).
 - Multi-source cross-verification beyond one research pass per snapshot.

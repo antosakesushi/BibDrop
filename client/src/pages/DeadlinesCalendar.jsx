@@ -69,7 +69,10 @@ export function DeadlinesCalendar() {
 
   return (
     <div style={{ padding: "24px 32px", maxWidth: 800, margin: "0 auto" }}>
-      <h1>Deadlines</h1>
+      <h1 style={{ marginBottom: 4 }}>Deadlines</h1>
+      <p style={{ color: "var(--text-secondary)", marginTop: 0 }}>
+        Email and push alerts are not built yet. This calendar is the placeholder behind Alerts in the nav.
+      </p>
 
       {allEvents.length === 0 && (
         <p style={{ color: "var(--text-secondary)" }}>
