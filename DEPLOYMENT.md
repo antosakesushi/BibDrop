@@ -40,6 +40,10 @@ a persistent process for cookies, Mongo, and Redis.
      — tune these to a budget you're comfortable with before going public.
    - `RESEARCH_SNAPSHOT_TTL_HOURS` — default 12; reuse a fresh snapshot
      instead of spending Claude.
+   - `RESEND_API_KEY` (preferred) or `SENDGRID_API_KEY` — email delivery for
+     watching-race alerts. Optional: without a key, `Alert` rows still
+     schedule and the worker no-ops send with a log line.
+   - `ALERT_FROM_EMAIL` — verified from-address for Resend/SendGrid.
 4. Do **not** set `RESEARCH_SYNC_FALLBACK` on Render.
 5. After first deploy, run the seed script once (Render's shell tab, or a
    one-off job): `npm run seed`.
@@ -51,8 +55,10 @@ Claude runs in a **second** process, not on the HTTP request.
 1. New **Background Worker** → same repo, root directory `server/`.
 2. Build command: `npm install`. Start command: `npm run worker`.
 3. Use the **same** env vars as the web service (`MONGODB_URI`, `REDIS_URL`,
-   `ANTHROPIC_API_KEY`, `JWT_SECRET`, budget caps, TTL). The worker does not
-   serve HTTP.
+   `ANTHROPIC_API_KEY`, `JWT_SECRET`, budget caps, TTL, and the email keys).
+   The worker does not serve HTTP. It runs Claude research **and** the
+   repeatable jobs: hourly due-alert scan, 6-hour refresh of races that have
+   at least one watcher (still under the daily research budget).
 
 If the worker is down, jobs stay `queued` until it comes back (or the client
 poll times out). The web service should still 202 as long as Redis is up.

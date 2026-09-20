@@ -18,5 +18,6 @@ const userRaceStatusSchema = new mongoose.Schema(
 );
 
 userRaceStatusSchema.index({ userId: 1, raceSlug: 1 }, { unique: true });
+userRaceStatusSchema.index({ raceSlug: 1, interestStage: 1 });
 
 export const UserRaceStatus = mongoose.model("UserRaceStatus", userRaceStatusSchema);

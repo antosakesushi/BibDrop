@@ -4,6 +4,7 @@ import { RaceDetail } from "./pages/RaceDetail.jsx";
 import { DeadlinesCalendar } from "./pages/DeadlinesCalendar.jsx";
 import { Discover } from "./pages/Discover.jsx";
 import { Goals } from "./pages/Goals.jsx";
+import { Alerts } from "./pages/Alerts.jsx";
 import { Settings } from "./pages/Settings.jsx";
 import { Login } from "./pages/Login.jsx";
 import { Register } from "./pages/Register.jsx";
@@ -23,7 +24,7 @@ function Nav() {
       <Link to="/" style={{ fontWeight: 700, textDecoration: "none" }}>BibDrop</Link>
       <Link to="/goals" style={{ color: "var(--text-secondary)", textDecoration: "none" }}>Goals</Link>
       <Link to="/" style={{ color: "var(--text-secondary)", textDecoration: "none" }}>Races</Link>
-      <Link to="/deadlines" style={{ color: "var(--text-secondary)", textDecoration: "none" }}>Alerts</Link>
+      <Link to="/alerts" style={{ color: "var(--text-secondary)", textDecoration: "none" }}>Alerts</Link>
       <Link to="/discover" style={{ color: "var(--text-secondary)", textDecoration: "none" }}>Discover</Link>
       <Link to="/settings" style={{ color: "var(--text-secondary)", textDecoration: "none" }}>Settings</Link>
 
@@ -55,6 +56,7 @@ export default function App() {
           <Route path="/" element={<Dashboard />} />
           <Route path="/races/:slug" element={<RaceDetail />} />
           <Route path="/goals" element={<Goals />} />
+          <Route path="/alerts" element={<Alerts />} />
           <Route path="/deadlines" element={<DeadlinesCalendar />} />
           <Route path="/settings" element={<Settings />} />
           <Route path="/discover" element={<Discover />} />

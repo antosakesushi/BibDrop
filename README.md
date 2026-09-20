@@ -22,8 +22,9 @@ bibdrop/
 - `server/src/services/claudeResearch.js` — the agent itself. Free-form research with the `web_search` tool, then a forced tool call to extract structured data from the findings.
 - `server/src/routes/research.js` — `POST /api/research/:slug` (auth, rate/budget, registry-only, **202** `{ snapshotId, status }`) and `GET /api/research/jobs/:snapshotId` (poll).
 - `server/src/models/ResearchSnapshot.js` — append-only history of each run (`queued|running|succeeded|failed`).
-- `server/src/worker.js` — BullMQ worker. Accepts registry `raceSlug` / snapshot id only — never a client URL.
+- `server/src/worker.js` — BullMQ worker. Research jobs, hourly alert scanner, 6h refresh of races with ≥1 watcher.
 - `server/src/models/Goal.js` — per-user goal stub (label, race tags, optional constraints). Does not spend Claude credits.
+- `server/src/models/Deadline.js` / `Alert.js` — current registration deadlines from the latest succeeded snapshot; watching-only email alert rows (14/7/1 day).
 - `server/src/seed/races.seed.js` — populates the race registry (identity only).
 
 ## Guardrails
@@ -70,6 +71,8 @@ Succeeded snapshots for a race are reused for `RESEARCH_SNAPSHOT_TTL_HOURS` (def
 
 A **Goals** stub (`/goals`) lets a signed-in runner create/list/archive a goal (BQ / World Major / destination tags, optional season/region/course). Creating a goal does not run research. The home page is still the race catalog — a Goals-first “what do I do next?” home is forthcoming.
 
+**Watching → alerts:** marking a race as watching materializes `Deadline` rows from the latest succeeded snapshot and upserts idempotent `Alert` rows (email, 14/7/1 days before). Dates that are null or `unknown` are never scheduled. The worker scans due alerts hourly. Set `RESEND_API_KEY` (preferred) or `SENDGRID_API_KEY` to actually send; without a key the scanner logs and leaves rows `scheduled`.
+
 ## Deployment
 
 Not live yet. `DEPLOYMENT.md` has a plan for Vercel (frontend) + Render (web API **and** background worker) + MongoDB Atlas + Redis once it's ready to go public.
@@ -77,7 +80,7 @@ Not live yet. `DEPLOYMENT.md` has a plan for Vercel (frontend) + Render (web API
 ## Not built yet
 
 - Goals-first home (the Goal entity exists as a stub; dashboard is still race-catalog first).
-- Deadline/Alert models, email, or .ics export (Alerts in the nav currently opens the existing Deadlines calendar).
 - Pathway / match ranking that uses Goal tags against researched races.
-- Scheduled/background refresh for watching races (research is still on-demand).
+- .ics calendar feed and push/SMS channels.
+- Invite-only hosted-pilot wall / WTP instrumentation.
 - Multi-source cross-verification beyond one research pass per snapshot.

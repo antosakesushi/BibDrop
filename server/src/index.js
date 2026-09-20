@@ -8,6 +8,7 @@ import { researchRouter } from "./routes/research.js";
 import { discoverRouter } from "./routes/discover.js";
 import { authRouter } from "./routes/auth.js";
 import { goalsRouter } from "./routes/goals.js";
+import { alertsRouter } from "./routes/alerts.js";
 
 const app = express();
 const allowedOrigins = (process.env.ALLOWED_ORIGINS || "http://localhost:5173").split(",");
@@ -35,6 +36,7 @@ app.use("/api/races", racesRouter);
 app.use("/api/research", researchRouter);
 app.use("/api/discover", discoverRouter);
 app.use("/api/goals", goalsRouter);
+app.use("/api", alertsRouter);
 
 // Basic error handler - last middleware
 app.use((err, req, res, next) => {
