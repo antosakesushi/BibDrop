@@ -112,7 +112,7 @@ export function RaceDetail() {
 
   return (
     <div style={{ padding: "24px 32px", maxWidth: 800, margin: "0 auto" }}>
-      <Link to="/" style={{ color: "var(--text-secondary)", fontSize: 13 }}>&larr; Back to dashboard</Link>
+      <Link to="/races" style={{ color: "var(--text-secondary)", fontSize: 13 }}>&larr; Back to races</Link>
 
       <h1 style={{ marginBottom: 4, marginTop: 8 }}>{race.name}</h1>
       <p style={{ color: "var(--text-secondary)", marginTop: 0 }}>
@@ -125,7 +125,10 @@ export function RaceDetail() {
       </div>
 
       <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
-        <button className="btn-primary" onClick={handleResearch} disabled={researching || !user}>
+        <a href={race.officialUrl} target="_blank" rel="noreferrer" className="btn-primary" style={{ textDecoration: "none" }}>
+          Official race site
+        </a>
+        <button className="btn-secondary" onClick={handleResearch} disabled={researching || !user}>
           {researchButtonLabel()}
         </button>
         {!user && (
@@ -222,6 +225,13 @@ export function RaceDetail() {
       <p style={{ marginTop: 24 }}>
         <a href={race.officialUrl} target="_blank" rel="noreferrer" style={{ color: "var(--accent-primary)" }}>
           Official race site &rarr;
+        </a>
+        {" · "}
+        <a
+          href={`mailto:?subject=${encodeURIComponent(`BibDrop: wrong info on ${race.name}`)}&body=${encodeURIComponent(`Race: ${race.name} (${race.slug})\nWhat looks wrong:\n`)}`}
+          style={{ color: "var(--text-secondary)", fontSize: 13 }}
+        >
+          Report wrong info
         </a>
       </p>
     </div>

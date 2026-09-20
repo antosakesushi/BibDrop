@@ -3,6 +3,7 @@ import mongoose from "mongoose";
 import { Goal as GoalModel } from "../models/Goal.js";
 import { requireAuth } from "../middleware/auth.js";
 import { isOwnedBy, normalizeGoalInput, serializeGoal, sortGoals } from "../services/goals.js";
+import { assembleGoalHome } from "../services/goalHomeStore.js";
 
 async function loadOwnedGoal(Goal, req, res) {
   const { id } = req.params;
@@ -21,6 +22,14 @@ async function loadOwnedGoal(Goal, req, res) {
 export function createGoalsRouter(Goal = GoalModel) {
   const router = Router();
   router.use(requireAuth);
+
+  router.get("/home", async (req, res, next) => {
+    try {
+      res.json(await assembleGoalHome(req.userId));
+    } catch (err) {
+      next(err);
+    }
+  });
 
   router.get("/", async (req, res, next) => {
     try {

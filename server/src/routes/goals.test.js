@@ -94,6 +94,13 @@ describe("GET /api/goals", () => {
       assert.equal(res.status, 401);
     });
   });
+
+  it("GET /home requires auth", async () => {
+    await withServer(createMemoryGoal(), async (base) => {
+      const res = await fetch(`${base}/api/goals/home`);
+      assert.equal(res.status, 401);
+    });
+  });
 });
 
 describe("POST /api/goals", () => {
