@@ -10,26 +10,54 @@ steps against each provider's docs, since free tiers and UIs change.
 3. Whitelist `0.0.0.0/0` (or your hosting provider's IP range) under
    Network Access.
 
-## 2. API: Render (or Railway/Fly.io)
+## 2. Redis
+
+BullMQ needs Redis. On Render: add a **Key Value** (Redis) instance and copy
+its internal URL into `REDIS_URL` for both the web service and the worker.
+
+Locally: `docker run -p 6379:6379 redis:7` and `REDIS_URL=redis://127.0.0.1:6379`.
+
+Without Redis, the API will **503** research requests (unless
+`RESEARCH_SYNC_FALLBACK=true`, which is local-demo-only and must not be set
+in production).
+
+## 3. API: Render web service
 
 A long-running Express server is a better fit here than a serverless
-function, since the research endpoint can take a while (the agent is doing
-real web research) and you want the rate-limiter's in-request DB reads to
-behave predictably.
+function — the API itself returns quickly (202 + poll), but you still want
+a persistent process for cookies, Mongo, and Redis.
 
-1. New Web Service → point at `server/` as the root directory.
+1. New **Web Service** → point at `server/` as the root directory.
 2. Build command: `npm install`. Start command: `npm start`.
 3. Set environment variables from `server/.env.example`:
    - `MONGODB_URI` (from Atlas)
+   - `REDIS_URL` (from the Redis instance)
+   - `JWT_SECRET` (long random string)
    - `ANTHROPIC_API_KEY`
    - `ALLOWED_ORIGINS` — set this to your deployed frontend URL once you
-     have it (step 3), or the API will reject cross-origin requests.
+     have it (step 5), or the API will reject cross-origin requests.
    - `RESEARCH_RATE_LIMIT_PER_IP_PER_HOUR` and `RESEARCH_DAILY_BUDGET_CAP`
      — tune these to a budget you're comfortable with before going public.
-4. After first deploy, run the seed script once (Render's shell tab, or a
+   - `RESEARCH_SNAPSHOT_TTL_HOURS` — default 12; reuse a fresh snapshot
+     instead of spending Claude.
+4. Do **not** set `RESEARCH_SYNC_FALLBACK` on Render.
+5. After first deploy, run the seed script once (Render's shell tab, or a
    one-off job): `npm run seed`.
 
-## 3. Frontend: Vercel
+## 4. Research worker: Render background worker
+
+Claude runs in a **second** process, not on the HTTP request.
+
+1. New **Background Worker** → same repo, root directory `server/`.
+2. Build command: `npm install`. Start command: `npm run worker`.
+3. Use the **same** env vars as the web service (`MONGODB_URI`, `REDIS_URL`,
+   `ANTHROPIC_API_KEY`, `JWT_SECRET`, budget caps, TTL). The worker does not
+   serve HTTP.
+
+If the worker is down, jobs stay `queued` until it comes back (or the client
+poll times out). The web service should still 202 as long as Redis is up.
+
+## 5. Frontend: Vercel
 
 1. New Project → point at `client/` as the root directory. Vercel
    auto-detects Vite.
@@ -47,7 +75,9 @@ behave predictably.
 - Re-read the Guardrails section in the main README.
 - Set `RESEARCH_DAILY_BUDGET_CAP` to something you're genuinely fine
   paying for if it gets maxed out every day.
-- Consider whether you want the research button live-callable by anyone,
-  or gated behind a simple shared password for a portfolio demo — a public
+- Confirm both the web service **and** the background worker are running,
+  and that `REDIS_URL` is set on both.
+- Consider whether you want the research button live-callable by anyone
+  with an account, or gated to a small hosted-pilot group — a public
   GitHub repo with a public demo link is far more discoverable than most
   people expect.
