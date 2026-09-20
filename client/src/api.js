@@ -61,4 +61,22 @@ export const api = {
     }).then(handle),
   logout: () => fetch(`${BASE}/auth/logout`, { method: "POST", credentials: "include" }).then(handle),
   me: () => fetch(`${BASE}/auth/me`, { credentials: "include" }).then(handle),
+
+  listGoals: () => fetch(`${BASE}/goals`, { credentials: "include" }).then(handle),
+  createGoal: (goal) =>
+    fetch(`${BASE}/goals`, {
+      method: "POST",
+      credentials: "include",
+      headers: jsonHeaders,
+      body: JSON.stringify(goal),
+    }).then(handle),
+  updateGoal: (id, patch) =>
+    fetch(`${BASE}/goals/${id}`, {
+      method: "PATCH",
+      credentials: "include",
+      headers: jsonHeaders,
+      body: JSON.stringify(patch),
+    }).then(handle),
+  archiveGoal: (id) =>
+    fetch(`${BASE}/goals/${id}`, { method: "DELETE", credentials: "include" }).then(handle),
 };
