@@ -2,6 +2,10 @@ import { Router } from "express";
 import { Race } from "../models/Race.js";
 import { UserRaceStatus } from "../models/UserRaceStatus.js";
 import { requireAuth, optionalAuth } from "../middleware/auth.js";
+import { getResearchBudgetDecision } from "../middleware/rateLimiter.js";
+import { findReusableSnapshot, requestResearchJob } from "../services/researchJobs.js";
+import { ensureDeadlinesFromLatestSnapshot } from "../services/deadlineStore.js";
+import { refreshAlertsForUserRace } from "../services/alerts.js";
 
 export const racesRouter = Router();
 
@@ -70,6 +74,42 @@ racesRouter.patch("/:slug/interest", requireAuth, async (req, res, next) => {
       { interestStage: stage },
       { upsert: true }
     );
+
+    if (stage === "watching") {
+      await ensureDeadlinesFromLatestSnapshot(race);
+      const fresh = await findReusableSnapshot(race.slug);
+      if (!fresh) {
+        try {
+          await requestResearchJob({
+            race,
+            userId: req.userId,
+            ip: req.ip || "unknown",
+            triggeredBy: "user",
+            assertBudget: async () => {
+              const decision = await getResearchBudgetDecision(req.ip || "unknown");
+              if (!decision.ok) {
+                const err = new Error(decision.error);
+                err.statusCode = decision.status;
+                throw err;
+              }
+            },
+          });
+        } catch (err) {
+          console.warn("[watch] could not enqueue freshness research:", err.message);
+        }
+      }
+      await refreshAlertsForUserRace({
+        userId: req.userId,
+        interestStage: "watching",
+        race,
+      });
+    } else {
+      await refreshAlertsForUserRace({
+        userId: req.userId,
+        interestStage: stage,
+        race,
+      });
+    }
 
     res.json({ ...race.toObject(), interestStage: stage });
   } catch (err) {

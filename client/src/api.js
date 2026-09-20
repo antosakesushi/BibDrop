@@ -79,4 +79,9 @@ export const api = {
     }).then(handle),
   archiveGoal: (id) =>
     fetch(`${BASE}/goals/${id}`, { method: "DELETE", credentials: "include" }).then(handle),
+  listAlerts: () => fetch(`${BASE}/alerts`, { credentials: "include" }).then(handle),
+  listDeadlines: (raceSlug) => {
+    const q = raceSlug ? `?raceSlug=${encodeURIComponent(raceSlug)}` : "";
+    return fetch(`${BASE}/deadlines${q}`, { credentials: "include" }).then(handle);
+  },
 };

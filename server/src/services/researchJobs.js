@@ -8,6 +8,7 @@ import {
   enqueueResearchJob,
   isSyncFallbackEnabled,
 } from "../queue/researchQueue.js";
+import { afterSnapshotSucceeded } from "./researchFollowup.js";
 
 const CONFIDENCE_VALUES = ["low", "medium", "high"];
 const DATE_CONFIDENCE_VALUES = ["confirmed", "estimated", "unknown"];
@@ -188,6 +189,7 @@ export async function processSnapshot(snapshotId, raceSlug) {
     snapshot.errorMessage = undefined;
     snapshot.finishedAt = new Date();
     await snapshot.save();
+    await afterSnapshotSucceeded(snapshot, race);
     return snapshot;
   } catch (err) {
     await markSnapshotFailed(snapshot, err.message);

@@ -158,6 +158,12 @@ export function RaceDetail() {
           </>
         )}
       </div>
+      {race.interestStage === "watching" && (
+        <p style={{ color: "var(--text-secondary)", fontSize: 13, marginTop: 10 }}>
+          Watching schedules email alerts 14, 7, and 1 day before dated deadlines (confirmed or estimated — not unknown / TBD).
+          See <Link to="/alerts" style={{ color: "var(--accent-primary)" }}>Alerts</Link>.
+        </p>
+      )}
       {error && <p style={{ color: "var(--status-urgent)" }}>{error}</p>}
 
       {summary && (
